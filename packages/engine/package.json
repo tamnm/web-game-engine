@@ -1,0 +1,29 @@
+{
+  "name": "@web-game-engine/core",
+  "version": "0.0.0",
+  "description": "Core 2D web game engine built with TypeScript",
+  "keywords": [
+    "game-engine",
+    "webgl",
+    "ecs"
+  ],
+  "author": "",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsup src/index.ts --dts --format esm",
+    "lint": "eslint src --ext .ts",
+    "test": "vitest",
+    "typecheck": "tsc -p tsconfig.build.json"
+  }
+}

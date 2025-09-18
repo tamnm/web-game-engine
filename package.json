@@ -1,0 +1,47 @@
+{
+  "name": "web-game-engine-monorepo",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Monorepo for the web game engine and showcase games",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "lint": "eslint . --max-warnings=0",
+    "lint:fix": "npm run lint -- --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "tsc -b",
+    "test": "vitest",
+    "test:watch": "vitest --watch",
+    "build": "npm run build --workspaces",
+    "clean": "rimraf dist packages/**/dist",
+    "prepare": "husky install"
+  },
+  "workspaces": [
+    "packages/*",
+    "packages/games/*"
+  ],
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^7.8.0",
+    "@typescript-eslint/parser": "^7.8.0",
+    "eslint": "^8.57.1",
+    "eslint-config-prettier": "^9.1.0",
+    "husky": "^9.0.11",
+    "jsdom": "^24.1.3",
+    "lint-staged": "^15.2.7",
+    "prettier": "^3.3.3",
+    "rimraf": "^5.0.5",
+    "tsup": "^8.1.0",
+    "typescript": "^5.5.4",
+    "typescript-eslint": "^7.18.0",
+    "vite": "^5.4.8",
+    "vitest": "^1.6.0"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,jsx,json,md,mdx,css,html,yml,yaml}": "prettier --write",
+    "*.{ts,tsx,js,jsx}": "eslint --fix"
+  }
+}
