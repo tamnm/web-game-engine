@@ -1,0 +1,3 @@
+# intersectsCircleAABB
+
+Kind: variable

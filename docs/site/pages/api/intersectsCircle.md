@@ -1,0 +1,3 @@
+# intersectsCircle
+
+Kind: variable

@@ -19,6 +19,7 @@
     "build": "npm run build --workspaces",
     "docs:serve": "vite docs/site",
     "docs:preview": "vite preview --root docs/site",
+    "docs:api": "node scripts/generate-api.mjs",
     "clean": "rimraf dist packages/**/dist",
     "prepare": "husky install"
   },

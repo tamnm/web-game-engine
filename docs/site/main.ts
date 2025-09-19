@@ -9,6 +9,7 @@ const PAGES: Page[] = [
   { id: 'input', title: 'Input', file: '/pages/input.md' },
   { id: 'tutorials', title: 'Tutorials', file: '/pages/tutorials.md' },
   { id: 'examples', title: 'Examples Gallery', file: '/pages/examples.md' },
+  { id: 'api', title: 'API Reference', file: '/pages/api/index.md' },
 ];
 
 const $ = (sel: string) => document.querySelector(sel) as HTMLElement;

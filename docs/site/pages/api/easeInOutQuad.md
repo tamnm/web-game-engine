@@ -1,0 +1,3 @@
+# easeInOutQuad
+
+Kind: variable
