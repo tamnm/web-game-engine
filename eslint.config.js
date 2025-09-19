@@ -4,7 +4,7 @@ import eslintConfigPrettier from 'eslint-config-prettier';
 
 export default tseslint.config(
   {
-    ignores: ['dist/**', 'coverage/**', 'node_modules/**', '.turbo/**'],
+    ignores: ['**/dist/**', '**/coverage/**', 'node_modules/**', '.turbo/**'],
   },
   {
     files: ['**/*.ts', '**/*.tsx'],
