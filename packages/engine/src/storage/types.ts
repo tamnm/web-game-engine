@@ -1,0 +1,26 @@
+export interface SaveRecord<T = unknown> {
+  version: number;
+  data: T;
+}
+
+export interface Migration<TIn = unknown, TOut = unknown> {
+  from: number;
+  to: number;
+  migrate: (data: TIn) => TOut;
+}
+
+export interface SaveStore {
+  get(key: string): string | null;
+  set(key: string, value: string): void;
+  remove(key: string): void;
+  keys(prefix?: string): string[];
+}
+
+export interface SaveManagerOptions<T = unknown> {
+  namespace: string;
+  version: number;
+  store?: SaveStore;
+  migrations?: Migration[];
+  serializer?: (record: SaveRecord<T>) => string;
+  deserializer?: (raw: string) => SaveRecord<T> | null;
+}
