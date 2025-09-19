@@ -116,6 +116,7 @@ function main() {
   // Index page
   const indexMd = ['# API Reference', '', ...pages.map((p) => `- [${p.name}](${p.file})`)].join('\n');
   writeFile(path.join(outDir, 'index.md'), indexMd);
+  // eslint-disable-next-line no-undef
   console.log(`Wrote ${pages.length} API pages to ${path.relative(root, outDir)}`);
 }
 
