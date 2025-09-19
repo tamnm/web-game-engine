@@ -16,11 +16,13 @@ export interface SaveStore {
   keys(prefix?: string): string[];
 }
 
+export type MigrationUnknown = Migration<unknown, unknown>;
+
 export interface SaveManagerOptions<T = unknown> {
   namespace: string;
   version: number;
   store?: SaveStore;
-  migrations?: Migration[];
+  migrations?: MigrationUnknown[];
   serializer?: (record: SaveRecord<T>) => string;
   deserializer?: (raw: string) => SaveRecord<T> | null;
 }

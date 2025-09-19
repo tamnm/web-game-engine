@@ -50,7 +50,11 @@ function renderSymbolMarkdown(checker, symbol) {
   // Try aliased symbol for re-exports
   let target = symbol;
   if (symbol.flags & ts.SymbolFlags.Alias) {
-    try { target = checker.getAliasedSymbol(symbol); } catch {}
+    try {
+      target = checker.getAliasedSymbol(symbol);
+    } catch (e) {
+      // ignore unresolved aliases
+    }
   }
 
   // Render based on declaration kind
@@ -121,4 +125,3 @@ function main() {
 }
 
 main();
-

@@ -1,14 +1,19 @@
 import { describe, expect, it } from 'vitest';
 import { World } from '../ecs';
 import { UIOverlay } from '../ui';
-import { PluginHost } from '../plugins';
-import { createExamplePlugin } from '../../../../plugins/example/index';
+import { PluginHost, type PluginDefinition } from '../plugins';
 
 describe('Example Plugin', () => {
-  it('adds a panel and updates tick counter via system', () => {
+  it('adds a panel and updates tick counter via system', async () => {
     const world = new World();
     const overlay = new UIOverlay();
     const host = new PluginHost({ world, overlay });
+    // Dynamically import the example plugin to avoid TS rootDir complaints
+    const mod = await import(
+      new URL('../../../../plugins/example/index.ts', import.meta.url).pathname
+    );
+    const createExamplePlugin = (mod as { createExamplePlugin: (id?: string) => PluginDefinition })
+      .createExamplePlugin;
     host.install(createExamplePlugin());
     // Run a few frames
     world.registerSystem({ id: 'noop', stage: 'update', execute: () => {} });
