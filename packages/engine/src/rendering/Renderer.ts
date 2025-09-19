@@ -1,4 +1,5 @@
 import { RenderContext, RenderStats, SpriteDrawOptions, Texture, TextureRegion } from './types';
+import { Camera2D } from './camera/Camera2D';
 
 const IDENTITY_TINT: [number, number, number, number] = [1, 1, 1, 1];
 
@@ -17,6 +18,7 @@ interface SpriteBatchCommand {
   rotation: number;
   tint: [number, number, number, number];
   origin: [number, number];
+  parallax: [number, number];
   region?: {
     x: number;
     y: number;
@@ -40,6 +42,7 @@ export class Renderer {
   private drawing = false;
   private currentBatch: SpriteBatch | null = null;
   private readonly maxBatchSize: number;
+  private camera: Camera2D | null = null;
 
   constructor(options: RendererOptions = {}) {
     if (options.contextProvider) {
@@ -69,6 +72,10 @@ export class Renderer {
         (this.context as CanvasRenderingContext2D).canvas.height
       );
     }
+  }
+
+  setCamera(camera: Camera2D | null): void {
+    this.camera = camera;
   }
 
   drawSprite(source: Texture | TextureRegion, options: SpriteDrawOptions): void {
@@ -104,6 +111,7 @@ export class Renderer {
     const height = options.height ?? region?.height ?? texture.height;
     const origin = options.origin ?? regionSource?.origin ?? [0.5, 0.5];
     const tint = options.tint ?? IDENTITY_TINT;
+    const parallax: [number, number] = options.parallax ?? [1, 1];
     return {
       texture,
       x: options.x,
@@ -113,6 +121,7 @@ export class Renderer {
       rotation: options.rotation ?? 0,
       tint,
       origin,
+      parallax,
       region,
     };
   }
@@ -148,8 +157,15 @@ export class Renderer {
     const { texture } = command;
     if (!ctx || !texture.source) return;
     const { origin, tint } = command;
+    const cam = this.camera;
+    const shake = cam?.shakeOffset ?? { x: 0, y: 0 };
+    const zoom = cam?.zoom ?? 1;
+    const camX = (cam?.x ?? 0) + shake.x;
+    const camY = (cam?.y ?? 0) + shake.y;
+    const tx = (command.x - camX * command.parallax[0]) * zoom;
+    const ty = (command.y - camY * command.parallax[1]) * zoom;
     ctx.save();
-    ctx.translate(command.x, command.y);
+    ctx.translate(tx, ty);
     if (command.rotation) {
       ctx.rotate(command.rotation);
     }
@@ -161,18 +177,18 @@ export class Renderer {
         command.region.y,
         command.region.width,
         command.region.height,
-        -command.width * origin[0],
-        -command.height * origin[1],
-        command.width,
-        command.height
+        -command.width * origin[0] * zoom,
+        -command.height * origin[1] * zoom,
+        command.width * zoom,
+        command.height * zoom
       );
     } else {
       ctx.drawImage(
         texture.source,
-        -command.width * origin[0],
-        -command.height * origin[1],
-        command.width,
-        command.height
+        -command.width * origin[0] * zoom,
+        -command.height * origin[1] * zoom,
+        command.width * zoom,
+        command.height * zoom
       );
     }
     ctx.restore();

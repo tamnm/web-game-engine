@@ -6,6 +6,7 @@ export interface SpriteDrawOptions {
   rotation?: number;
   tint?: [number, number, number, number];
   origin?: [number, number];
+  parallax?: [number, number]; // (1,1)=world space; (0,0)=screen-space
 }
 
 export interface RenderStats {
