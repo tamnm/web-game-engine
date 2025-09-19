@@ -1,5 +1,6 @@
 import { RenderContext, RenderStats, SpriteDrawOptions, Texture, TextureRegion } from './types';
 import { Camera2D } from './camera/Camera2D';
+import { Viewport } from './viewport/Viewport';
 
 const IDENTITY_TINT: [number, number, number, number] = [1, 1, 1, 1];
 
@@ -43,6 +44,7 @@ export class Renderer {
   private currentBatch: SpriteBatch | null = null;
   private readonly maxBatchSize: number;
   private camera: Camera2D | null = null;
+  private viewport: Viewport | null = null;
 
   constructor(options: RendererOptions = {}) {
     if (options.contextProvider) {
@@ -65,17 +67,21 @@ export class Renderer {
         (this.context as WebGL2RenderingContext).COLOR_BUFFER_BIT
       );
     } else if (this.context) {
-      (this.context as CanvasRenderingContext2D).clearRect(
-        0,
-        0,
-        (this.context as CanvasRenderingContext2D).canvas.width,
-        (this.context as CanvasRenderingContext2D).canvas.height
-      );
+      const ctx2d = this.context as CanvasRenderingContext2D;
+      ctx2d.setTransform(1, 0, 0, 1, 0, 0);
+      ctx2d.clearRect(0, 0, ctx2d.canvas.width, ctx2d.canvas.height);
+      if (this.viewport) {
+        this.viewport.applyToContext(ctx2d);
+      }
     }
   }
 
   setCamera(camera: Camera2D | null): void {
     this.camera = camera;
+  }
+
+  setViewport(viewport: Viewport | null): void {
+    this.viewport = viewport;
   }
 
   drawSprite(source: Texture | TextureRegion, options: SpriteDrawOptions): void {

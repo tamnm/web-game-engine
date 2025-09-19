@@ -14,6 +14,8 @@ function createMockContext2D(): CanvasRenderingContext2D {
     rotate: vi.fn(),
     clearRect: vi.fn(),
     drawImage: vi.fn(),
+    setTransform: vi.fn(),
+    scale: vi.fn(),
     globalAlpha: 1,
   } as unknown as CanvasRenderingContext2D;
   return ctx;
