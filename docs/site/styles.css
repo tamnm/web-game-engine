@@ -1,0 +1,126 @@
+:root {
+  --bg: #0b0d10;
+  --panel: #11151a;
+  --text: #e8f0ff;
+  --muted: #9aa7bd;
+  --accent: #5ab0ff;
+  --accent-2: #a084ff;
+  --border: #223040;
+}
+
+* {
+  box-sizing: border-box;
+}
+html,
+body {
+  height: 100%;
+}
+body {
+  margin: 0;
+  font:
+    14px/1.5 system-ui,
+    -apple-system,
+    Segoe UI,
+    Roboto,
+    Ubuntu,
+    Cantarell,
+    Noto Sans,
+    Arial,
+    'Apple Color Emoji',
+    'Segoe UI Emoji';
+  background: var(--bg);
+  color: var(--text);
+}
+
+.site-header {
+  position: sticky;
+  top: 0;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 16px;
+  background: linear-gradient(180deg, rgba(17, 21, 26, 0.95), rgba(17, 21, 26, 0.85));
+  border-bottom: 1px solid var(--border);
+}
+.brand {
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+.version-badge {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  gap: 0;
+  min-height: calc(100vh - 50px);
+}
+.sidebar {
+  background: var(--panel);
+  border-right: 1px solid var(--border);
+  padding: 12px;
+}
+.sidebar #search {
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: #0d1117;
+  color: var(--text);
+  margin-bottom: 8px;
+}
+.sidebar ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.sidebar li {
+  margin: 6px 0;
+}
+.sidebar a {
+  color: var(--muted);
+  text-decoration: none;
+}
+.sidebar a.active {
+  color: var(--accent);
+}
+
+.content {
+  padding: 20px 28px;
+}
+.content h1,
+.content h2 {
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 6px;
+}
+.content pre {
+  background: #0d1117;
+  padding: 12px;
+  border-radius: 8px;
+  overflow: auto;
+}
+.content code {
+  color: var(--accent-2);
+}
+.content table {
+  border-collapse: collapse;
+  width: 100%;
+}
+.content th,
+.content td {
+  border: 1px solid var(--border);
+  padding: 6px 8px;
+}
+
+@media (max-width: 900px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+  .sidebar {
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+}
