@@ -12,3 +12,4 @@ export * from './demo/MinimalDemoScene';
 export * from './devtools';
 export * from './ui';
 export * from './storage';
+export * from './particles';
