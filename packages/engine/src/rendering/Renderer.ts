@@ -20,6 +20,7 @@ interface SpriteBatchCommand {
   tint: [number, number, number, number];
   origin: [number, number];
   parallax: [number, number];
+  blend?: 'normal' | 'additive' | 'multiply' | 'screen';
   region?: {
     x: number;
     y: number;
@@ -45,6 +46,7 @@ export class Renderer {
   private readonly maxBatchSize: number;
   private camera: Camera2D | null = null;
   private viewport: Viewport | null = null;
+  private postProcessHook: ((ctx: CanvasRenderingContext2D) => void) | null = null;
 
   constructor(options: RendererOptions = {}) {
     if (options.contextProvider) {
@@ -84,6 +86,10 @@ export class Renderer {
     this.viewport = viewport;
   }
 
+  setPostProcess(hook: ((ctx: CanvasRenderingContext2D) => void) | null): void {
+    this.postProcessHook = hook;
+  }
+
   drawSprite(source: Texture | TextureRegion, options: SpriteDrawOptions): void {
     if (!this.drawing) {
       throw new Error('Renderer.begin() must be called before drawing');
@@ -96,6 +102,13 @@ export class Renderer {
   end(): RenderStats {
     this.flushCurrentBatch();
     this.drawing = false;
+    if (this.context && !this.isWebGLContext(this.context) && this.postProcessHook) {
+      const ctx2d = this.context as CanvasRenderingContext2D;
+      ctx2d.save();
+      ctx2d.setTransform(1, 0, 0, 1, 0, 0);
+      this.postProcessHook(ctx2d);
+      ctx2d.restore();
+    }
     return { ...this.stats };
   }
 
@@ -128,6 +141,7 @@ export class Renderer {
       tint,
       origin,
       parallax,
+      blend: options.blend,
       region,
     };
   }
@@ -170,12 +184,14 @@ export class Renderer {
     const camY = (cam?.y ?? 0) + shake.y;
     const tx = (command.x - camX * command.parallax[0]) * zoom;
     const ty = (command.y - camY * command.parallax[1]) * zoom;
+    const baseComposite = this.mapBlendToCanvas(command.blend ?? 'normal');
     ctx.save();
     ctx.translate(tx, ty);
     if (command.rotation) {
       ctx.rotate(command.rotation);
     }
     ctx.globalAlpha = tint[3];
+    ctx.globalCompositeOperation = baseComposite;
     if (command.region) {
       ctx.drawImage(
         texture.source,
@@ -197,10 +213,54 @@ export class Renderer {
         command.height * zoom
       );
     }
+    // Simple per-sprite color tint using multiply + destination-in masking
+    const [tr, tg, tb] = tint;
+    if (tr !== 1 || tg !== 1 || tb !== 1) {
+      const x = -command.width * origin[0] * zoom;
+      const y = -command.height * origin[1] * zoom;
+      const w = command.width * zoom;
+      const h = command.height * zoom;
+      ctx.save();
+      ctx.globalCompositeOperation = 'multiply';
+      ctx.fillStyle = `rgb(${Math.round(tr * 255)}, ${Math.round(tg * 255)}, ${Math.round(tb * 255)})`;
+      ctx.fillRect(x, y, w, h);
+      ctx.globalCompositeOperation = 'destination-in';
+      if (command.region) {
+        ctx.drawImage(
+          texture.source,
+          command.region.x,
+          command.region.y,
+          command.region.width,
+          command.region.height,
+          x,
+          y,
+          w,
+          h
+        );
+      } else {
+        ctx.drawImage(texture.source, x, y, w, h);
+      }
+      ctx.restore();
+    }
     ctx.restore();
   }
 
   private isWebGLContext(ctx: RenderContext): ctx is WebGL2RenderingContext {
     return typeof WebGL2RenderingContext !== 'undefined' && ctx instanceof WebGL2RenderingContext;
+  }
+
+  private mapBlendToCanvas(
+    blend: 'normal' | 'additive' | 'multiply' | 'screen'
+  ): GlobalCompositeOperation {
+    switch (blend) {
+      case 'additive':
+        return 'lighter';
+      case 'multiply':
+        return 'multiply';
+      case 'screen':
+        return 'screen';
+      default:
+        return 'source-over';
+    }
   }
 }

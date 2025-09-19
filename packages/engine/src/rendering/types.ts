@@ -7,6 +7,7 @@ export interface SpriteDrawOptions {
   tint?: [number, number, number, number];
   origin?: [number, number];
   parallax?: [number, number]; // (1,1)=world space; (0,0)=screen-space
+  blend?: BlendMode;
 }
 
 export interface RenderStats {
@@ -42,3 +43,5 @@ export interface TextureAtlasFrameDefinition {
 }
 
 export type TextureAtlasDefinition = Record<string, TextureAtlasFrameDefinition>;
+
+export type BlendMode = 'normal' | 'additive' | 'multiply' | 'screen';
