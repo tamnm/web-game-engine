@@ -7,6 +7,8 @@ const PAGES: Page[] = [
   { id: 'rendering', title: 'Rendering', file: '/pages/rendering.md' },
   { id: 'scenes', title: 'Scenes & ECS', file: '/pages/scenes.md' },
   { id: 'input', title: 'Input', file: '/pages/input.md' },
+  { id: 'tutorials', title: 'Tutorials', file: '/pages/tutorials.md' },
+  { id: 'examples', title: 'Examples Gallery', file: '/pages/examples.md' },
 ];
 
 const $ = (sel: string) => document.querySelector(sel) as HTMLElement;
