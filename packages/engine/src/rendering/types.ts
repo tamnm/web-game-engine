@@ -45,3 +45,5 @@ export interface TextureAtlasFrameDefinition {
 export type TextureAtlasDefinition = Record<string, TextureAtlasFrameDefinition>;
 
 export type BlendMode = 'normal' | 'additive' | 'multiply' | 'screen';
+
+export type RenderBackend = 'webgl2' | 'canvas2d' | 'none';

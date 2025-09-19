@@ -1,4 +1,11 @@
-import { RenderContext, RenderStats, SpriteDrawOptions, Texture, TextureRegion } from './types';
+import {
+  RenderBackend,
+  RenderContext,
+  RenderStats,
+  SpriteDrawOptions,
+  Texture,
+  TextureRegion,
+} from './types';
 import { Camera2D } from './camera/Camera2D';
 import { Viewport } from './viewport/Viewport';
 
@@ -47,6 +54,7 @@ export class Renderer {
   private camera: Camera2D | null = null;
   private viewport: Viewport | null = null;
   private postProcessHook: ((ctx: CanvasRenderingContext2D) => void) | null = null;
+  private backend: RenderBackend = 'none';
 
   constructor(options: RendererOptions = {}) {
     if (options.contextProvider) {
@@ -56,6 +64,11 @@ export class Renderer {
     } else {
       this.context = null;
     }
+    if (this.context) {
+      this.backend = this.isWebGLContext(this.context) ? 'webgl2' : 'canvas2d';
+    } else {
+      this.backend = 'none';
+    }
     this.maxBatchSize = Math.max(1, options.maxBatchSize ?? 1000);
   }
 
@@ -63,8 +76,8 @@ export class Renderer {
     this.stats = { drawCalls: 0, sprites: 0, batches: 0 };
     this.drawing = true;
     this.currentBatch = null;
-    if (this.context && 'clearColor' in this.context) {
-      this.context.clearColor(0, 0, 0, 1);
+    if (this.context && this.isWebGLContext(this.context)) {
+      (this.context as WebGL2RenderingContext).clearColor(0, 0, 0, 1);
       (this.context as WebGL2RenderingContext).clear(
         (this.context as WebGL2RenderingContext).COLOR_BUFFER_BIT
       );
@@ -88,6 +101,10 @@ export class Renderer {
 
   setPostProcess(hook: ((ctx: CanvasRenderingContext2D) => void) | null): void {
     this.postProcessHook = hook;
+  }
+
+  getBackend(): RenderBackend {
+    return this.backend;
   }
 
   drawSprite(source: Texture | TextureRegion, options: SpriteDrawOptions): void {

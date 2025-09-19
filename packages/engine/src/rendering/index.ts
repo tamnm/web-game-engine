@@ -3,3 +3,4 @@ export { Renderer } from './Renderer';
 export { TextureAtlas } from './TextureAtlas';
 export { Camera2D } from './camera/Camera2D';
 export { Viewport } from './viewport/Viewport';
+export * as Features from './support/features';
