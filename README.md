@@ -58,15 +58,16 @@ Engine unit tests live in `packages/engine/src/__tests__`. Coverage includes ECS
 
 Completed
 
+- M0 — Foundations (scaffolding, coding standards, ESLint/Prettier, CI skeleton, ADRs)
 - M1 — Core Engine MVP (ECS, scenes, assets, input, basic renderer/audio, animation)
 - M2 — Rendering & Performance (sprite batching, cameras, viewport scaling, tint/blend hooks, Canvas fallback, dev overlay, perf harness)
-- M3 — Polishing & Plugins (initial pass)
-- M7 — Docs (site scaffold, tutorials/examples, API reference generation)
+- M3 — Polishing & Plugins (UI overlay, save/load, particles, plugin host, example plugin; docs drafted)
 
 Next
 
-1. Finalize M7 — Docs & Release
-   - Acceptance runs, changelog, versioning, and publish workflow.
+1. M7 — Docs & Release (in progress)
+   - Completed: Docs site scaffold, tutorials/examples, API reference generation.
+   - Remaining: final acceptance runs, changelog, versioning, publish workflow.
 2. Showcase Builds (M4–M6)
    - Implement Super Snake, Advanced Tetris, Flappy-like; leaderboards and deterministic replays.
 3. Tooling Cleanup
