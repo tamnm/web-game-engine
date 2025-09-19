@@ -55,6 +55,7 @@ export class Renderer {
   private viewport: Viewport | null = null;
   private postProcessHook: ((ctx: CanvasRenderingContext2D) => void) | null = null;
   private backend: RenderBackend = 'none';
+  private frameStartMs = 0;
 
   constructor(options: RendererOptions = {}) {
     if (options.contextProvider) {
@@ -76,6 +77,8 @@ export class Renderer {
     this.stats = { drawCalls: 0, sprites: 0, batches: 0 };
     this.drawing = true;
     this.currentBatch = null;
+    const perf = (globalThis as unknown as { performance?: Performance }).performance;
+    this.frameStartMs = perf?.now ? perf.now() : Date.now();
     if (this.context && this.isWebGLContext(this.context)) {
       (this.context as WebGL2RenderingContext).clearColor(0, 0, 0, 1);
       (this.context as WebGL2RenderingContext).clear(
@@ -107,6 +110,10 @@ export class Renderer {
     return this.backend;
   }
 
+  getStats(): RenderStats {
+    return { ...this.stats };
+  }
+
   drawSprite(source: Texture | TextureRegion, options: SpriteDrawOptions): void {
     if (!this.drawing) {
       throw new Error('Renderer.begin() must be called before drawing');
@@ -126,7 +133,11 @@ export class Renderer {
       this.postProcessHook(ctx2d);
       ctx2d.restore();
     }
-    return { ...this.stats };
+    const perf = (globalThis as unknown as { performance?: Performance }).performance;
+    const now = perf?.now ? perf.now() : Date.now();
+    const dt = Math.max(0, now - this.frameStartMs);
+    const result = { ...this.stats, frameTimeMs: dt } as RenderStats;
+    return result;
   }
 
   private prepareCommand(

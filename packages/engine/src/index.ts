@@ -9,3 +9,4 @@ export * from './animation';
 export * from './math/Vec2';
 export * from './utils/EventEmitter';
 export * from './demo/MinimalDemoScene';
+export * from './devtools';

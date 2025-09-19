@@ -14,6 +14,7 @@ export interface RenderStats {
   drawCalls: number;
   sprites: number;
   batches: number;
+  frameTimeMs?: number;
 }
 
 export type RenderContext = WebGL2RenderingContext | CanvasRenderingContext2D;
