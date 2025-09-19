@@ -1,8 +1,8 @@
 export interface SpriteDrawOptions {
   x: number;
   y: number;
-  width: number;
-  height: number;
+  width?: number;
+  height?: number;
   rotation?: number;
   tint?: [number, number, number, number];
   origin?: [number, number];
@@ -22,3 +22,22 @@ export interface Texture {
   readonly height: number;
   readonly source: HTMLImageElement | HTMLCanvasElement | ImageBitmap | null;
 }
+
+export interface TextureRegion {
+  readonly texture: Texture;
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+  readonly height: number;
+  readonly origin?: [number, number];
+}
+
+export interface TextureAtlasFrameDefinition {
+  readonly x: number;
+  readonly y: number;
+  readonly width: number;
+  readonly height: number;
+  readonly origin?: [number, number];
+}
+
+export type TextureAtlasDefinition = Record<string, TextureAtlasFrameDefinition>;

@@ -1,16 +1,45 @@
-import { RenderContext, RenderStats, SpriteDrawOptions, Texture } from './types';
+import { RenderContext, RenderStats, SpriteDrawOptions, Texture, TextureRegion } from './types';
 
 const IDENTITY_TINT: [number, number, number, number] = [1, 1, 1, 1];
 
 export interface RendererOptions {
   canvas?: HTMLCanvasElement;
   contextProvider?: () => RenderContext | null;
+  maxBatchSize?: number;
+}
+
+interface SpriteBatchCommand {
+  texture: Texture;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  rotation: number;
+  tint: [number, number, number, number];
+  origin: [number, number];
+  region?: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
+}
+
+interface SpriteBatch {
+  texture: Texture;
+  commands: SpriteBatchCommand[];
+}
+
+function isTextureRegion(source: Texture | TextureRegion): source is TextureRegion {
+  return (source as TextureRegion).texture !== undefined && 'x' in source;
 }
 
 export class Renderer {
   private readonly context: RenderContext | null;
   private stats: RenderStats = { drawCalls: 0, sprites: 0, batches: 0 };
   private drawing = false;
+  private currentBatch: SpriteBatch | null = null;
+  private readonly maxBatchSize: number;
 
   constructor(options: RendererOptions = {}) {
     if (options.contextProvider) {
@@ -20,11 +49,13 @@ export class Renderer {
     } else {
       this.context = null;
     }
+    this.maxBatchSize = Math.max(1, options.maxBatchSize ?? 1000);
   }
 
   begin(): void {
     this.stats = { drawCalls: 0, sprites: 0, batches: 0 };
     this.drawing = true;
+    this.currentBatch = null;
     if (this.context && 'clearColor' in this.context) {
       this.context.clearColor(0, 0, 0, 1);
       (this.context as WebGL2RenderingContext).clear(
@@ -40,40 +71,114 @@ export class Renderer {
     }
   }
 
-  drawSprite(texture: Texture, options: SpriteDrawOptions): void {
+  drawSprite(source: Texture | TextureRegion, options: SpriteDrawOptions): void {
     if (!this.drawing) {
       throw new Error('Renderer.begin() must be called before drawing');
     }
-    this.stats.drawCalls += 1;
+    const command = this.prepareCommand(source, options);
+    this.enqueue(command);
     this.stats.sprites += 1;
-    if (this.context && !(this.context instanceof WebGL2RenderingContext)) {
-      this.drawSpriteCanvas(texture, options);
-    }
   }
 
   end(): RenderStats {
+    this.flushCurrentBatch();
     this.drawing = false;
-    this.stats.batches = Math.max(1, this.stats.drawCalls);
     return { ...this.stats };
   }
 
-  private drawSpriteCanvas(texture: Texture, options: SpriteDrawOptions): void {
-    const ctx = this.context as CanvasRenderingContext2D | null;
-    if (!ctx || !texture.source) return;
-    const origin = options.origin ?? [0.5, 0.5];
+  private prepareCommand(
+    source: Texture | TextureRegion,
+    options: SpriteDrawOptions
+  ): SpriteBatchCommand {
+    const regionSource = isTextureRegion(source) ? source : undefined;
+    const region = regionSource
+      ? {
+          x: regionSource.x,
+          y: regionSource.y,
+          width: regionSource.width,
+          height: regionSource.height,
+        }
+      : undefined;
+    const texture = regionSource ? regionSource.texture : (source as Texture);
+    const width = options.width ?? region?.width ?? texture.width;
+    const height = options.height ?? region?.height ?? texture.height;
+    const origin = options.origin ?? regionSource?.origin ?? [0.5, 0.5];
     const tint = options.tint ?? IDENTITY_TINT;
+    return {
+      texture,
+      x: options.x,
+      y: options.y,
+      width,
+      height,
+      rotation: options.rotation ?? 0,
+      tint,
+      origin,
+      region,
+    };
+  }
+
+  private enqueue(command: SpriteBatchCommand): void {
+    const texture = command.texture;
+    if (!this.currentBatch || this.currentBatch.texture.id !== texture.id) {
+      this.flushCurrentBatch();
+      this.currentBatch = { texture, commands: [] };
+    }
+    this.currentBatch.commands.push(command);
+    if (this.currentBatch.commands.length >= this.maxBatchSize) {
+      this.flushCurrentBatch();
+    }
+  }
+
+  private flushCurrentBatch(): void {
+    if (!this.currentBatch || this.currentBatch.commands.length === 0) {
+      return;
+    }
+    if (this.context && !this.isWebGLContext(this.context)) {
+      for (const command of this.currentBatch.commands) {
+        this.drawSpriteCanvas(command);
+      }
+    }
+    this.stats.drawCalls += 1;
+    this.stats.batches += 1;
+    this.currentBatch = null;
+  }
+
+  private drawSpriteCanvas(command: SpriteBatchCommand): void {
+    const ctx = this.context as CanvasRenderingContext2D | null;
+    const { texture } = command;
+    if (!ctx || !texture.source) return;
+    const { origin, tint } = command;
     ctx.save();
-    ctx.translate(options.x, options.y);
-    const rotation = options.rotation ?? 0;
-    ctx.rotate(rotation);
+    ctx.translate(command.x, command.y);
+    if (command.rotation) {
+      ctx.rotate(command.rotation);
+    }
     ctx.globalAlpha = tint[3];
-    ctx.drawImage(
-      texture.source,
-      -options.width * origin[0],
-      -options.height * origin[1],
-      options.width,
-      options.height
-    );
+    if (command.region) {
+      ctx.drawImage(
+        texture.source,
+        command.region.x,
+        command.region.y,
+        command.region.width,
+        command.region.height,
+        -command.width * origin[0],
+        -command.height * origin[1],
+        command.width,
+        command.height
+      );
+    } else {
+      ctx.drawImage(
+        texture.source,
+        -command.width * origin[0],
+        -command.height * origin[1],
+        command.width,
+        command.height
+      );
+    }
     ctx.restore();
+  }
+
+  private isWebGLContext(ctx: RenderContext): ctx is WebGL2RenderingContext {
+    return typeof WebGL2RenderingContext !== 'undefined' && ctx instanceof WebGL2RenderingContext;
   }
 }
