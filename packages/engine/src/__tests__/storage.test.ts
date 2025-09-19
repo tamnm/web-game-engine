@@ -35,8 +35,16 @@ describe('SaveManager with LocalStorage', () => {
       version: 3,
       store,
       migrations: [
-        { from: 1, to: 2, migrate: (d: { score: string }) => ({ score: parseInt(d.score, 10) }) },
-        { from: 2, to: 3, migrate: (d: { score: number }) => ({ score: d.score + 1 }) },
+        {
+          from: 1,
+          to: 2,
+          migrate: (d: unknown) => ({ score: parseInt((d as { score: string }).score, 10) }),
+        },
+        {
+          from: 2,
+          to: 3,
+          migrate: (d: unknown) => ({ score: (d as { score: number }).score + 1 }),
+        },
       ],
     });
     const rec = saves.load();
