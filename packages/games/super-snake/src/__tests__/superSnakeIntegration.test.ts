@@ -102,6 +102,7 @@ describe('Super Snake integration', () => {
         spawn: { x: 5, y: 1 },
         foodMaxActive: 1,
         random,
+        autoStartMode: 'classic',
       },
     });
 

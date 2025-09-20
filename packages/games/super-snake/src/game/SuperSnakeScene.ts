@@ -7,16 +7,25 @@ import {
   SnakeComponent,
   SnakeGameState,
   SnakeSegment,
+  SnakeGameMode,
 } from './components';
 import { createSnakeMovementSystem } from './systems/SnakeMovementSystem';
 import { createFoodSystem } from './systems/FoodSystem';
 import { spawnSuperSnake, SuperSnakeOptions } from './factory';
 import { SuperSnakeInput, SuperSnakeInputOptions } from './input';
 import { setNextDirection } from './Snake';
+import { SuperSnakeUI, SuperSnakeUIOptions } from './ui/SuperSnakeUI';
+import { LeaderboardStorage, LeaderboardEntry } from './ui/LeaderboardStorage';
 
 export interface SuperSnakeSceneOptions extends SuperSnakeOptions {
   context: CanvasRenderingContext2D;
   input?: SuperSnakeInputOptions;
+  ui?: SuperSnakeUIOptions;
+  leaderboard?: {
+    storageKey?: string;
+    maxEntries?: number;
+    storage?: Storage;
+  };
 }
 
 export class SuperSnakeScene extends Scene {
@@ -25,30 +34,53 @@ export class SuperSnakeScene extends Scene {
   private readonly context: CanvasRenderingContext2D;
   private readonly options: SuperSnakeOptions;
   private readonly input: SuperSnakeInput;
+  private readonly ui: SuperSnakeUI;
+  private readonly leaderboard: LeaderboardStorage;
   private snakeEntity: number | null = null;
   private devicePixelRatio = 1;
+  private phase: 'menu' | 'playing' | 'paused' | 'game-over' = 'menu';
+  private currentMode: SnakeGameMode = 'classic';
+  private replayEvents: Array<{ time: number; direction: SnakeComponent['direction'] }> = [];
+  private elapsedMs = 0;
+  private lastScoreSnapshot: { mode: SnakeGameMode; score: number; combo: number } | null = null;
 
-  constructor(world: World, { context, input, ...options }: SuperSnakeSceneOptions) {
+  constructor(
+    world: World,
+    { context, input, ui, leaderboard, ...options }: SuperSnakeSceneOptions
+  ) {
     super('super-snake.scene', world);
     this.context = context;
     this.options = options;
     this.devicePixelRatio = (globalThis as { devicePixelRatio?: number }).devicePixelRatio ?? 1;
     this.input = new SuperSnakeInput(input);
+    this.leaderboard = new LeaderboardStorage(leaderboard);
+    this.ui = new SuperSnakeUI({ container: context.canvas.parentElement ?? undefined, ...ui });
+    this.ui.setState('main-menu');
+    this.ui.setLeaderboard(this.leaderboard.load());
+    this.registerUiEvents();
+    this.input.onPause(() => {
+      if (this.phase === 'playing') {
+        this.setPhase('paused');
+        this.ui.setState('paused');
+      } else if (this.phase === 'paused') {
+        this.resume();
+      }
+    });
   }
 
   override onEnter(): void {
     this.world.registerSystem(createSnakeMovementSystem());
     this.world.registerSystem(createFoodSystem());
-    this.snakeEntity = spawnSuperSnake(this.world, this.options);
-    if (this.snakeEntity !== null) {
-      this.input.attach(this.context.canvas);
-    }
+    this.input.attach(this.context.canvas);
+    this.setPhase('menu');
+    this.ui.setState('main-menu');
   }
 
   override onExit(): void {
     this.world.unregisterSystem(this.movementSystemId);
     this.world.unregisterSystem(this.foodSystemId);
     this.input.detach();
+    this.ui.dispose();
     if (this.snakeEntity !== null && this.world.hasEntity(this.snakeEntity)) {
       this.world.destroyEntity(this.snakeEntity);
     }
@@ -56,6 +88,13 @@ export class SuperSnakeScene extends Scene {
   }
 
   override update(delta: number): void {
+    if (this.phase === 'menu' || this.phase === 'game-over') {
+      return;
+    }
+    if (this.phase === 'paused') {
+      this.input.update();
+      return;
+    }
     this.input.update();
     if (this.snakeEntity !== null) {
       const snake = this.world.getComponent(this.snakeEntity, Snake);
@@ -63,11 +102,14 @@ export class SuperSnakeScene extends Scene {
         let direction = this.input.consumeDirection();
         while (direction) {
           setNextDirection(snake, direction);
+          this.replayEvents.push({ time: this.elapsedMs, direction });
           direction = this.input.consumeDirection();
         }
       }
     }
+    this.elapsedMs += delta;
     this.world.step(delta);
+    this.checkForGameOver();
   }
 
   override render(): void {
@@ -192,5 +234,119 @@ export class SuperSnakeScene extends Scene {
         maxCombo: state.maxCombo,
       },
     };
+  }
+
+  private checkForGameOver(): void {
+    if (this.phase !== 'playing' || this.snakeEntity === null) return;
+    const snake = this.world.getComponent(this.snakeEntity, Snake);
+    if (!snake) return;
+    if (!snake.alive) {
+      const state = this.world.getComponent(this.snakeEntity, SnakeGameState);
+      if (!state) return;
+      const snapshot = {
+        mode: this.currentMode,
+        score: state.score,
+        combo: state.maxCombo,
+      };
+      this.lastScoreSnapshot = snapshot;
+      this.ui.setLastScore(snapshot);
+      this.setPhase('game-over');
+      this.ui.setState('game-over');
+    }
+  }
+
+  startGame(mode: SnakeGameMode): void {
+    this.currentMode = mode;
+    if (this.snakeEntity !== null && this.world.hasEntity(this.snakeEntity)) {
+      this.world.destroyEntity(this.snakeEntity);
+    }
+    this.snakeEntity = spawnSuperSnake(this.world, { ...this.options });
+    this.replayEvents = [];
+    this.elapsedMs = 0;
+    this.lastScoreSnapshot = null;
+    this.ui.setLastScore(null);
+    this.ui.setReplayPreview(null);
+    this.setPhase('playing');
+    this.ui.setState('playing');
+  }
+
+  private restart(): void {
+    this.startGame(this.currentMode);
+  }
+
+  private resume(): void {
+    this.setPhase('playing');
+    this.ui.setState('playing');
+  }
+
+  private exitToMenu(): void {
+    if (this.snakeEntity !== null && this.world.hasEntity(this.snakeEntity)) {
+      this.world.destroyEntity(this.snakeEntity);
+    }
+    this.snakeEntity = null;
+    this.setPhase('menu');
+    this.ui.setState('main-menu');
+  }
+
+  private saveScore(initials: string): void {
+    if (!this.lastScoreSnapshot) return;
+    const uuid =
+      typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random()}`;
+    const entry: LeaderboardEntry = {
+      id: uuid,
+      initials,
+      score: this.lastScoreSnapshot.score,
+      combo: this.lastScoreSnapshot.combo,
+      mode: this.lastScoreSnapshot.mode,
+      occurredAt: Date.now(),
+      replay: {
+        description: 'Direction events recorded during run',
+        data: {
+          mode: this.lastScoreSnapshot.mode,
+          events: this.replayEvents,
+          durationMs: this.elapsedMs,
+        },
+      },
+    };
+    const updated = this.leaderboard.add(entry);
+    this.ui.setLeaderboard(updated);
+    this.ui.setReplayPreview(entry);
+    this.ui.setState('leaderboard');
+  }
+
+  private deleteEntry(entry: LeaderboardEntry): void {
+    const updated = this.leaderboard.remove(entry.id);
+    this.ui.setLeaderboard(updated);
+    if (this.ui.getState() === 'replay-view') {
+      this.ui.setReplayPreview(null);
+    }
+  }
+
+  private registerUiEvents(): void {
+    this.ui.on('start', ({ mode }) => this.startGame(mode));
+    this.ui.on('resume', () => this.resume());
+    this.ui.on('restart', () => this.restart());
+    this.ui.on('exitToMenu', () => this.exitToMenu());
+    this.ui.on('openSettings', () => {
+      if (this.phase === 'playing') {
+        this.setPhase('paused');
+      }
+    });
+    this.ui.on('closeSettings', () => {
+      if (this.phase === 'playing') {
+        this.ui.setState('playing');
+      } else if (this.phase === 'menu') {
+        this.ui.setState('main-menu');
+      }
+    });
+    this.ui.on('saveInitials', ({ initials }) => this.saveScore(initials));
+    this.ui.on('deleteEntry', ({ entry }) => this.deleteEntry(entry));
+    this.ui.on('viewReplay', ({ entry }) => this.ui.setReplayPreview(entry));
+  }
+
+  private setPhase(phase: typeof this.phase): void {
+    this.phase = phase;
   }
 }

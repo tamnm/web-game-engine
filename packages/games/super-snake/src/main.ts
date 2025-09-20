@@ -1,5 +1,11 @@
 import { SceneManager, World } from '@web-game-engine/core';
-import { SuperSnakeScene, SuperSnakeOptions, SuperSnakeInputOptions } from './game';
+import {
+  SuperSnakeScene,
+  SuperSnakeOptions,
+  SuperSnakeInputOptions,
+  SuperSnakeUIOptions,
+  SnakeGameMode,
+} from './game';
 
 export interface BootOptions {
   /** Host element that will receive the canvas. Defaults to `document.body`. */
@@ -12,7 +18,16 @@ export interface BootOptions {
   scene?: SuperSnakeSceneConfig;
 }
 
-export type SuperSnakeSceneConfig = SuperSnakeOptions & { input?: SuperSnakeInputOptions };
+export interface SuperSnakeSceneConfig extends SuperSnakeOptions {
+  input?: SuperSnakeInputOptions;
+  ui?: SuperSnakeUIOptions;
+  leaderboard?: {
+    storageKey?: string;
+    maxEntries?: number;
+    storage?: Storage;
+  };
+  autoStartMode?: SnakeGameMode;
+}
 
 export interface SuperSnakeRuntime {
   canvas: HTMLCanvasElement;
@@ -57,6 +72,14 @@ export async function bootSuperSnake(options: BootOptions = {}): Promise<SuperSn
     running = false;
     cancelAnimationFrame(rafId);
     await manager.pop();
+  }
+
+  const current = manager.current;
+  if (current instanceof SuperSnakeScene) {
+    const mode = options.scene?.autoStartMode;
+    if (mode) {
+      current.startGame(mode);
+    }
   }
 
   return { canvas, manager, stop };

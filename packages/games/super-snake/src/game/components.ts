@@ -168,3 +168,5 @@ export const FoodState: ComponentDefinition<FoodStateComponent> = {
     nextId: 1,
   }),
 };
+
+export type SnakeGameMode = 'classic' | 'timed' | 'endless' | 'challenge';

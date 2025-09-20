@@ -62,6 +62,7 @@ export class SuperSnakeInput {
   private attached = false;
   private readonly listeners: Array<() => void> = [];
   private readonly unsubscribes: Array<() => void> = [];
+  private readonly pauseListeners = new Set<() => void>();
 
   constructor(options: SuperSnakeInputOptions = {}) {
     this.window = options.window ?? window;
@@ -114,6 +115,7 @@ export class SuperSnakeInput {
     this.lastAxisDirection = null;
     this.pointerSnapshot = null;
     this.directionQueue.length = 0;
+    this.pauseListeners.clear();
   }
 
   update(): void {
@@ -147,6 +149,11 @@ export class SuperSnakeInput {
     this.manager.rebind(action, bindings);
   }
 
+  onPause(listener: () => void): () => void {
+    this.pauseListeners.add(listener);
+    return () => this.pauseListeners.delete(listener);
+  }
+
   private ensureDefaultBindings(): void {
     (Object.keys(DEFAULT_BINDINGS) as ControlAction[]).forEach((action) => {
       if (this.manager.getBindings(action).length === 0) {
@@ -170,6 +177,9 @@ export class SuperSnakeInput {
             break;
           case 'move-right':
             this.queueDirection('right');
+            break;
+          case 'pause':
+            this.emitPause();
             break;
           default:
             break;
@@ -248,6 +258,12 @@ export class SuperSnakeInput {
     if (!this.enableTouch) return;
     this.pointerSnapshot = null;
   };
+
+  private emitPause(): void {
+    for (const listener of Array.from(this.pauseListeners)) {
+      listener();
+    }
+  }
 
   private processGamepadButtons(pad: Gamepad): void {
     const mappings: Array<{ index: number; direction: SnakeDirection }> = [

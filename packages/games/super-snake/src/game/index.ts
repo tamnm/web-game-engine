@@ -7,3 +7,5 @@ export * from './systems/SnakeMovementSystem';
 export * from './systems/FoodSystem';
 export * from './SuperSnakeScene';
 export * from './input';
+export * from './ui/SuperSnakeUI';
+export * from './ui/LeaderboardStorage';
