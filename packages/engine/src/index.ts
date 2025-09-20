@@ -14,3 +14,4 @@ export * from './ui';
 export * from './storage';
 export * from './particles';
 export * from './plugins';
+export * from './testing';

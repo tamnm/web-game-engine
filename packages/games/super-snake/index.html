@@ -10,7 +10,9 @@
     <script type="module">
       import { bootSuperSnake } from '/src/main.ts';
 
-      bootSuperSnake();
+      bootSuperSnake().catch((error) => {
+        console.error('Failed to boot Super Snake', error);
+      });
     </script>
   </body>
 </html>

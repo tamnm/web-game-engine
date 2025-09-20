@@ -5,11 +5,14 @@
   "description": "Super Snake showcase game built on the web game engine",
   "type": "module",
   "main": "dist/index.js",
+  "dependencies": {
+    "@web-game-engine/core": "0.0.0"
+  },
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
     "test": "vitest",
-    "lint": "eslint src --ext .ts,.tsx"
+    "lint": "eslint ./src"
   }
 }
