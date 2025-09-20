@@ -21,7 +21,7 @@
     }
   },
   "scripts": {
-    "build": "tsup src/index.ts --dts --format esm",
+    "build": "tsup src/index.ts --format esm && tsc -p tsconfig.build.json --emitDeclarationOnly",
     "lint": "eslint src --ext .ts",
     "test": "vitest",
     "typecheck": "tsc -p tsconfig.build.json"
