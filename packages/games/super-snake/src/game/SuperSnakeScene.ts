@@ -6,6 +6,7 @@ import {
   Snake,
   SnakeComponent,
   SnakeGameState,
+  SnakeGameStateComponent,
   SnakeSegment,
   SnakeGameMode,
 } from './components';
@@ -109,6 +110,7 @@ export class SuperSnakeScene extends Scene {
     }
     this.elapsedMs += delta;
     this.world.step(delta);
+    this.syncHudWithState();
     this.checkForGameOver();
   }
 
@@ -215,7 +217,9 @@ export class SuperSnakeScene extends Scene {
     const grid = this.world.getComponent(this.snakeEntity, Grid);
     const snake = this.world.getComponent(this.snakeEntity, Snake);
     const food = this.world.getComponent(this.snakeEntity, FoodState);
-    const state = this.world.getComponent(this.snakeEntity, SnakeGameState);
+    const state = this.world.getComponent(this.snakeEntity, SnakeGameState) as
+      | SnakeGameStateComponent
+      | undefined;
     if (!grid || !snake || !food || !state) return null;
     return {
       grid: { ...grid },
@@ -255,6 +259,19 @@ export class SuperSnakeScene extends Scene {
     }
   }
 
+  private syncHudWithState(): void {
+    if (this.phase !== 'playing' || this.snakeEntity === null) {
+      return;
+    }
+    const state = this.world.getComponent(this.snakeEntity, SnakeGameState) as
+      | SnakeGameStateComponent
+      | undefined;
+    if (!state) {
+      return;
+    }
+    this.ui.setHudStats({ score: state.score, combo: state.comboCount });
+  }
+
   startGame(mode: SnakeGameMode): void {
     this.currentMode = mode;
     if (this.snakeEntity !== null && this.world.hasEntity(this.snakeEntity)) {
@@ -266,6 +283,11 @@ export class SuperSnakeScene extends Scene {
     this.lastScoreSnapshot = null;
     this.ui.setLastScore(null);
     this.ui.setReplayPreview(null);
+    const state = this.world.getComponent(this.snakeEntity, SnakeGameState);
+    const initialScore = state
+      ? { score: state.score, combo: state.comboCount }
+      : { score: 0, combo: 0 };
+    this.ui.setHudStats(initialScore);
     this.setPhase('playing');
     this.ui.setState('playing');
   }
@@ -348,5 +370,8 @@ export class SuperSnakeScene extends Scene {
 
   private setPhase(phase: typeof this.phase): void {
     this.phase = phase;
+    if (phase !== 'playing') {
+      this.ui.setHudStats(null);
+    }
   }
 }

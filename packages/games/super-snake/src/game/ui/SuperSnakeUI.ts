@@ -49,6 +49,10 @@ export class SuperSnakeUI {
   private replayPreview: LeaderboardEntry | null = null;
   private readonly listeners = new Map<keyof SuperSnakeUIEvents, Set<unknown>>();
   private modeFeedback: string | null = null;
+  private hudStats: { score: number; combo: number } | null = null;
+  private hudPanel: HTMLDivElement | null = null;
+  private hudScoreLabel: HTMLDivElement | null = null;
+  private hudComboLabel: HTMLDivElement | null = null;
 
   constructor(options: SuperSnakeUIOptions = {}) {
     this.overlay = new UIOverlay({ container: options.container });
@@ -109,6 +113,18 @@ export class SuperSnakeUI {
     }
   }
 
+  setHudStats(stats: { score: number; combo: number } | null): void {
+    this.hudStats = stats;
+    if (stats === null) {
+      this.destroyHud();
+      return;
+    }
+    if (this.state === 'playing') {
+      this.ensureHud();
+      this.updateHudContent();
+    }
+  }
+
   dispose(): void {
     this.overlay.clear();
     this.overlay.detach();
@@ -116,6 +132,9 @@ export class SuperSnakeUI {
 
   private render(): void {
     this.overlay.clear();
+    this.hudPanel = null;
+    this.hudScoreLabel = null;
+    this.hudComboLabel = null;
     switch (this.state) {
       case 'main-menu':
         this.renderMainMenu();
@@ -139,7 +158,7 @@ export class SuperSnakeUI {
         this.renderReplayView();
         break;
       case 'playing':
-        // no overlay while playing
+        this.renderPlayingHud();
         break;
     }
   }
@@ -360,6 +379,77 @@ export class SuperSnakeUI {
     }
     const back = this.createButton('Back to Leaderboard', () => this.setState('leaderboard'));
     panel.appendChild(back);
+  }
+
+  private renderPlayingHud(): void {
+    this.ensureHud();
+    this.updateHudContent();
+  }
+
+  private ensureHud(): void {
+    if (this.hudPanel) {
+      return;
+    }
+    const panel = this.overlay.addPanel({ anchor: 'top-left', x: 16, y: 16 });
+    panel.dataset.testid = 'super-snake-hud';
+    panel.style.pointerEvents = 'none';
+    panel.style.display = 'flex';
+    panel.style.flexDirection = 'column';
+    panel.style.gap = '4px';
+    panel.style.minWidth = '140px';
+    panel.style.padding = '10px 14px';
+    panel.style.borderRadius = '12px';
+    panel.style.border = '1px solid rgba(70, 92, 122, 0.7)';
+    panel.style.background = 'rgba(8, 13, 20, 0.82)';
+    panel.style.boxShadow = '0 12px 24px rgba(5, 9, 14, 0.35)';
+    panel.style.color = '#f4f9ff';
+    panel.style.fontFamily = FONT_STACK;
+
+    const title = document.createElement('div');
+    title.textContent = 'In-Game';
+    title.style.fontSize = '12px';
+    title.style.letterSpacing = '0.16em';
+    title.style.fontWeight = '600';
+    title.style.opacity = '0.65';
+    panel.appendChild(title);
+
+    const score = document.createElement('div');
+    score.style.fontSize = '20px';
+    score.style.fontWeight = '600';
+    score.style.lineHeight = '1.2';
+    panel.appendChild(score);
+
+    const combo = document.createElement('div');
+    combo.style.fontSize = '14px';
+    combo.style.opacity = '0.85';
+    combo.style.fontWeight = '500';
+    panel.appendChild(combo);
+
+    this.hudPanel = panel;
+    this.hudScoreLabel = score;
+    this.hudComboLabel = combo;
+  }
+
+  private updateHudContent(): void {
+    if (!this.hudPanel) {
+      return;
+    }
+    const stats = this.hudStats ?? { score: 0, combo: 0 };
+    if (this.hudScoreLabel) {
+      this.hudScoreLabel.textContent = `Score ${stats.score}`;
+    }
+    if (this.hudComboLabel) {
+      this.hudComboLabel.textContent = `Combo x${stats.combo}`;
+    }
+  }
+
+  private destroyHud(): void {
+    if (this.hudPanel) {
+      this.hudPanel.remove();
+    }
+    this.hudPanel = null;
+    this.hudScoreLabel = null;
+    this.hudComboLabel = null;
   }
 
   private createButton(label: string, onClick: () => void): HTMLButtonElement {

@@ -54,7 +54,7 @@ export interface SnakeMovementComponent {
 export const SnakeMovement: ComponentDefinition<SnakeMovementComponent> = {
   name: 'super-snake.snakeMovement',
   defaults: () => ({
-    moveIntervalMs: 160,
+    moveIntervalMs: 140,
     accumulatorMs: 0,
   }),
 };

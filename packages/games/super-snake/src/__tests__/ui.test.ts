@@ -38,6 +38,30 @@ describe('SuperSnakeUI', () => {
     ui.dispose();
     document.body.innerHTML = '';
   });
+
+  it('renders live HUD while playing and updates with score changes', () => {
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const ui = new SuperSnakeUI({ container });
+
+    ui.setHudStats({ score: 12, combo: 2 });
+    ui.setState('playing');
+
+    const hud = container.querySelector('[data-testid="super-snake-hud"]') as HTMLDivElement | null;
+    expect(hud).toBeTruthy();
+    expect(hud?.textContent).toContain('Score 12');
+    expect(hud?.textContent).toContain('Combo x2');
+
+    ui.setHudStats({ score: 28, combo: 5 });
+    expect(hud?.textContent).toContain('Score 28');
+    expect(hud?.textContent).toContain('Combo x5');
+
+    ui.setHudStats(null);
+    expect(container.querySelector('[data-testid="super-snake-hud"]')).toBeNull();
+
+    ui.dispose();
+    document.body.innerHTML = '';
+  });
 });
 
 describe('LeaderboardStorage', () => {
