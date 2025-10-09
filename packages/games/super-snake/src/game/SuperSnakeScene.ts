@@ -9,9 +9,12 @@ import {
   SnakeGameStateComponent,
   SnakeSegment,
   SnakeGameMode,
+  PowerUpState,
+  PowerUpStateComponent,
 } from './components';
 import { createSnakeMovementSystem } from './systems/SnakeMovementSystem';
 import { createFoodSystem } from './systems/FoodSystem';
+import { createPowerUpSystem } from './systems/PowerUpSystem';
 import { spawnSuperSnake, SuperSnakeOptions } from './factory';
 import { SuperSnakeInput, SuperSnakeInputOptions } from './input';
 import { setNextDirection } from './Snake';
@@ -32,6 +35,7 @@ export interface SuperSnakeSceneOptions extends SuperSnakeOptions {
 export class SuperSnakeScene extends Scene {
   private readonly movementSystemId = 'super-snake.systems.snake-movement';
   private readonly foodSystemId = 'super-snake.systems.food';
+  private readonly powerUpSystemId = 'super-snake.systems.power-ups';
   private readonly context: CanvasRenderingContext2D;
   private readonly options: SuperSnakeOptions;
   private readonly input: SuperSnakeInput;
@@ -71,6 +75,7 @@ export class SuperSnakeScene extends Scene {
 
   override onEnter(): void {
     this.world.registerSystem(createSnakeMovementSystem());
+    this.world.registerSystem(createPowerUpSystem());
     this.world.registerSystem(createFoodSystem());
     this.input.attach(this.context.canvas);
     this.setPhase('menu');
@@ -80,6 +85,7 @@ export class SuperSnakeScene extends Scene {
   override onExit(): void {
     this.world.unregisterSystem(this.movementSystemId);
     this.world.unregisterSystem(this.foodSystemId);
+    this.world.unregisterSystem(this.powerUpSystemId);
     this.input.detach();
     this.ui.dispose();
     if (this.snakeEntity !== null && this.world.hasEntity(this.snakeEntity)) {
@@ -119,6 +125,9 @@ export class SuperSnakeScene extends Scene {
     const grid = this.world.getComponent(this.snakeEntity, Grid);
     const snake = this.world.getComponent(this.snakeEntity, Snake);
     const food = this.world.getComponent(this.snakeEntity, FoodState);
+    const powerUps = this.world.getComponent(this.snakeEntity, PowerUpState) as
+      | PowerUpStateComponent
+      | undefined;
     if (!grid || !snake || !food) {
       return;
     }
@@ -161,6 +170,28 @@ export class SuperSnakeScene extends Scene {
       const y = item.y * grid.cellSize + padding;
       ctx.fillRect(x, y, size, size);
     });
+
+    if (powerUps) {
+      powerUps.items.forEach((item) => {
+        const [r, g, b, a] = item.tint;
+        const centerX = item.x * grid.cellSize + grid.cellSize / 2;
+        const centerY = item.y * grid.cellSize + grid.cellSize / 2;
+        const radius = grid.cellSize * 0.35;
+        ctx.beginPath();
+        ctx.fillStyle = `rgba(${Math.round(r * 255)}, ${Math.round(g * 255)}, ${Math.round(b * 255)}, ${a})`;
+        ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
+        ctx.stroke();
+        const fontSize = Math.max(16, Math.floor(grid.cellSize * 0.55));
+        ctx.font = `${fontSize}px "Noto Color Emoji", "Apple Color Emoji", "Segoe UI Emoji", system-ui`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText(item.icon, centerX, centerY);
+      });
+    }
 
     // Draw snake body.
     ctx.fillStyle = '#2ecc71';
@@ -207,6 +238,10 @@ export class SuperSnakeScene extends Scene {
     food: {
       items: { id: number; type: string; x: number; y: number }[];
     };
+    powerUps?: {
+      items: { id: number; type: string; x: number; y: number }[];
+      active: { id: number; type: string; expiresAt: number }[];
+    };
     state: {
       score: number;
       comboCount: number;
@@ -217,6 +252,9 @@ export class SuperSnakeScene extends Scene {
     const grid = this.world.getComponent(this.snakeEntity, Grid);
     const snake = this.world.getComponent(this.snakeEntity, Snake);
     const food = this.world.getComponent(this.snakeEntity, FoodState);
+    const powerUps = this.world.getComponent(this.snakeEntity, PowerUpState) as
+      | PowerUpStateComponent
+      | undefined;
     const state = this.world.getComponent(this.snakeEntity, SnakeGameState) as
       | SnakeGameStateComponent
       | undefined;
@@ -232,6 +270,22 @@ export class SuperSnakeScene extends Scene {
       food: {
         items: food.items.map((item) => ({ id: item.id, type: item.type, x: item.x, y: item.y })),
       },
+      powerUps: powerUps
+        ? {
+            items: powerUps.items.map((item) => ({
+              id: item.id,
+              type: item.type,
+              icon: item.icon,
+              x: item.x,
+              y: item.y,
+            })),
+            active: powerUps.active.map((entry) => ({
+              id: entry.id,
+              type: entry.type,
+              expiresAt: entry.expiresAt,
+            })),
+          }
+        : undefined,
       state: {
         score: state.score,
         comboCount: state.comboCount,

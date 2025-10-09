@@ -170,3 +170,125 @@ export const FoodState: ComponentDefinition<FoodStateComponent> = {
 };
 
 export type SnakeGameMode = 'classic' | 'timed' | 'endless' | 'challenge';
+
+export type PowerUpType = 'slow-mo' | 'ghost' | 'magnet' | 'double-score';
+
+export interface PowerUpEffectConfig {
+  /** Multiplies the movement interval when slow-mo is active. >1 slows the snake. */
+  speedMultiplier?: number;
+  /** Enables passing through self collisions when true. */
+  ghostPhase?: boolean;
+  /** Additional multiplier applied to score gains. */
+  scoreMultiplier?: number;
+  /** Manhattan distance range for magnetised food spawns. */
+  magnetRange?: number;
+}
+
+export interface PowerUpDefinition {
+  id: string;
+  type: PowerUpType;
+  weight: number;
+  durationMs: number;
+  effect: PowerUpEffectConfig;
+  tint: [number, number, number, number];
+  icon: string;
+}
+
+export interface PowerUpItem {
+  id: number;
+  definitionId: string;
+  type: PowerUpType;
+  x: number;
+  y: number;
+  spawnedAt: number;
+  tint: [number, number, number, number];
+  icon: string;
+}
+
+export interface ActivePowerUp {
+  id: number;
+  type: PowerUpType;
+  expiresAt: number;
+  effect: PowerUpEffectConfig;
+}
+
+export interface PowerUpConfigComponent {
+  definitions: PowerUpDefinition[];
+  maxActive: number;
+  spawnIntervalMs: number;
+  initialDelayMs: number;
+  random?: () => number;
+}
+
+export const PowerUpConfig: ComponentDefinition<PowerUpConfigComponent> = {
+  name: 'super-snake.powerUpConfig',
+  defaults: () => ({
+    definitions: [
+      {
+        id: 'slow-mo',
+        type: 'slow-mo',
+        weight: 3,
+        durationMs: 6000,
+        effect: {
+          speedMultiplier: 1.8,
+        },
+        tint: [0.25, 0.65, 0.95, 1],
+        icon: '🐢',
+      },
+      {
+        id: 'ghost',
+        type: 'ghost',
+        weight: 2,
+        durationMs: 5000,
+        effect: {
+          ghostPhase: true,
+        },
+        tint: [0.7, 0.8, 0.95, 1],
+        icon: '👻',
+      },
+      {
+        id: 'magnet',
+        type: 'magnet',
+        weight: 2,
+        durationMs: 7000,
+        effect: {
+          magnetRange: 4,
+        },
+        tint: [0.9, 0.6, 0.15, 1],
+        icon: '🧲',
+      },
+      {
+        id: 'double-score',
+        type: 'double-score',
+        weight: 2,
+        durationMs: 8000,
+        effect: {
+          scoreMultiplier: 2,
+        },
+        tint: [0.95, 0.3, 0.6, 1],
+        icon: '✨',
+      },
+    ],
+    maxActive: 1,
+    spawnIntervalMs: 12000,
+    initialDelayMs: 6000,
+    random: undefined,
+  }),
+};
+
+export interface PowerUpStateComponent {
+  items: PowerUpItem[];
+  active: ActivePowerUp[];
+  lastSpawnAt: number;
+  nextId: number;
+}
+
+export const PowerUpState: ComponentDefinition<PowerUpStateComponent> = {
+  name: 'super-snake.powerUpState',
+  defaults: () => ({
+    items: [],
+    active: [],
+    lastSpawnAt: -Infinity,
+    nextId: 1,
+  }),
+};

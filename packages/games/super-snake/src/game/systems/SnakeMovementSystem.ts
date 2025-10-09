@@ -8,9 +8,12 @@ import {
   SnakeGameStateComponent,
   SnakeMovement,
   SnakeMovementComponent,
+  PowerUpState,
+  PowerUpStateComponent,
 } from '../components';
 import { advancePosition } from '../Grid';
 import { applyNextDirection, getHead, stepSnake, willSelfCollide } from '../Snake';
+import { getMovementSpeedMultiplier, isGhostPhaseActive } from '../PowerUps';
 
 export function createSnakeMovementSystem(): System {
   return {
@@ -33,6 +36,9 @@ export function createSnakeMovementSystem(): System {
         const state = world.getComponent(entity, SnakeGameState) as
           | SnakeGameStateComponent
           | undefined;
+        const powerUps = world.getComponent(entity, PowerUpState) as
+          | PowerUpStateComponent
+          | undefined;
 
         if (!grid || !snake || !movement || !state) {
           continue;
@@ -44,9 +50,12 @@ export function createSnakeMovementSystem(): System {
 
         state.mode = grid.mode;
         movement.accumulatorMs += delta;
+        const speedMultiplier = getMovementSpeedMultiplier(powerUps, elapsed);
+        const effectiveInterval = Math.max(1, movement.moveIntervalMs * speedMultiplier);
+        const ghostPhase = isGhostPhaseActive(powerUps, elapsed);
 
-        while (movement.accumulatorMs >= movement.moveIntervalMs) {
-          movement.accumulatorMs -= movement.moveIntervalMs;
+        while (movement.accumulatorMs >= effectiveInterval) {
+          movement.accumulatorMs -= effectiveInterval;
 
           const direction = applyNextDirection(snake);
           const head = getHead(snake);
@@ -57,7 +66,9 @@ export function createSnakeMovementSystem(): System {
             state.mode
           );
 
-          if (collided || willSelfCollide(snake, nextPosition)) {
+          const selfCollision = ghostPhase ? false : willSelfCollide(snake, nextPosition);
+
+          if (collided || selfCollision) {
             snake.alive = false;
             movement.accumulatorMs = 0;
             break;

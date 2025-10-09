@@ -6,6 +6,8 @@ import {
   FoodStateComponent,
   Grid,
   GridComponent,
+  PowerUpState,
+  PowerUpStateComponent,
   Snake,
   SnakeComponent,
   SnakeGameState,
@@ -13,12 +15,13 @@ import {
 } from '../components';
 import { computeAvailableCells, createFoodItem, selectFoodDefinition } from '../Food';
 import { getHead } from '../Snake';
+import { getMagnetRange, getScoreMultiplier } from '../PowerUps';
 
 export function createFoodSystem(): System {
   return {
     id: 'super-snake.systems.food',
     stage: 'update',
-    order: 1,
+    order: 2,
     execute: ({ world, elapsed }) => {
       const rows = world.query({
         all: [Grid, Snake, SnakeGameState, FoodConfig, FoodState],
@@ -34,6 +37,9 @@ export function createFoodSystem(): System {
           | undefined;
         const config = world.getComponent(entity, FoodConfig) as FoodConfigComponent | undefined;
         const food = world.getComponent(entity, FoodState) as FoodStateComponent | undefined;
+        const powerUps = world.getComponent(entity, PowerUpState) as
+          | PowerUpStateComponent
+          | undefined;
 
         if (!grid || !snake || !state || !config || !food) {
           continue;
@@ -57,7 +63,8 @@ export function createFoodSystem(): System {
             state.maxCombo = Math.max(state.maxCombo, state.comboCount);
             state.lastConsumedAt = elapsed;
             const multiplier = Math.max(1, state.comboCount);
-            state.score += item.score * multiplier;
+            const scoreBoost = powerUps ? getScoreMultiplier(powerUps, elapsed) : 1;
+            state.score += item.score * multiplier * scoreBoost;
 
             // Allow immediate respawn if capacity remains.
             food.lastSpawnAt = elapsed - config.spawnIntervalMs;
@@ -72,7 +79,20 @@ export function createFoodSystem(): System {
           if (available.length === 0) {
             break;
           }
-          const cell = available[Math.floor(random() * available.length)];
+          let spawnPool = available;
+          if (powerUps && snake.segments.length > 0) {
+            const magnetRange = getMagnetRange(powerUps, elapsed);
+            if (magnetRange !== null) {
+              const head = getHead(snake);
+              const magnetised = available.filter(
+                (cell) => Math.abs(cell.x - head.x) + Math.abs(cell.y - head.y) <= magnetRange
+              );
+              if (magnetised.length > 0) {
+                spawnPool = magnetised;
+              }
+            }
+          }
+          const cell = spawnPool[Math.floor(random() * spawnPool.length)];
           const definition = selectFoodDefinition(config, random);
           const item = createFoodItem(food, definition, cell, elapsed);
           food.items.push(item);

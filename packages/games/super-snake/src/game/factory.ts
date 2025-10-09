@@ -13,6 +13,11 @@ import {
   SnakeGameState,
   SnakeMovement,
   FoodDefinition,
+  PowerUpConfig,
+  PowerUpConfigComponent,
+  PowerUpDefinition,
+  PowerUpState,
+  PowerUpStateComponent,
 } from './components';
 import { directionToVector, GridPosition } from './Grid';
 import { initializeSnake } from './Snake';
@@ -32,6 +37,10 @@ export interface SuperSnakeOptions {
   foodSpawnIntervalMs?: number;
   comboWindowMs?: number;
   random?: () => number;
+  powerUpDefinitions?: PowerUpDefinition[];
+  powerUpMaxActive?: number;
+  powerUpSpawnIntervalMs?: number;
+  powerUpInitialDelayMs?: number;
 }
 
 export function spawnSuperSnake(world: World, options: SuperSnakeOptions = {}): number {
@@ -95,6 +104,21 @@ export function spawnSuperSnake(world: World, options: SuperSnakeOptions = {}): 
   const foodState = FoodState.defaults!();
   world.addComponent(entity, FoodState, foodState);
   seedInitialFood(foodConfig, foodState, grid, snake);
+
+  const powerUpConfigDefaults = PowerUpConfig.defaults!();
+  const powerUpConfig: PowerUpConfigComponent = {
+    ...powerUpConfigDefaults,
+    definitions:
+      options.powerUpDefinitions ??
+      powerUpConfigDefaults.definitions.map((definition) => ({ ...definition })),
+    maxActive: options.powerUpMaxActive ?? powerUpConfigDefaults.maxActive,
+    spawnIntervalMs: options.powerUpSpawnIntervalMs ?? powerUpConfigDefaults.spawnIntervalMs,
+    initialDelayMs: options.powerUpInitialDelayMs ?? powerUpConfigDefaults.initialDelayMs,
+    random: options.random ?? powerUpConfigDefaults.random,
+  };
+  world.addComponent(entity, PowerUpConfig, powerUpConfig);
+  const powerUpState: PowerUpStateComponent = PowerUpState.defaults!();
+  world.addComponent(entity, PowerUpState, powerUpState);
 
   return entity;
 }
