@@ -34,6 +34,7 @@ Supporting directories:
 | `npm run test`         | Run the Vitest suite once.                        |
 | `npm run test:watch`   | Run Vitest in watch mode.                         |
 | `npm run build`        | Invoke each workspace build script (tsup / Vite). |
+| `npm run build:pages`  | Build demo bundles into `docs/` for GitHub Pages. |
 | `npm run clean`        | Remove build artefacts (`dist`, `.turbo`).        |
 | `npm run docs:serve`   | Serve the docs site with Vite (dev).              |
 | `npm run docs:preview` | Preview the built docs site.                      |
@@ -46,8 +47,13 @@ Engine unit tests live in `packages/engine/src/__tests__`. Coverage includes ECS
 ## Docs
 
 - Static docs site in `docs/site` with a simple theme and sidebar.
+- GitHub Pages splash in `docs/` that links to built demo games (`npm run build:pages` syncs assets).
 - API Reference is generated from TypeScript via `npm run docs:api` into `docs/site/pages/api`.
 - See `docs/README.md` for usage, versioning badge, and deployment tips.
+
+### GitHub Pages
+
+Automated deployments run via `.github/workflows/pages.yml`. It installs dependencies, executes `npm run build:pages`, uploads the resulting `docs/` contents as the Pages artifact, and publishes to the `github-pages` environment on each push to `main`.
 
 ## Requirements & ADRs
 

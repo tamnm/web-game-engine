@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Web Game Engine · Demos</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: 'Inter', 'Segoe UI', 'Roboto', 'Helvetica Neue', sans-serif;
+        background: radial-gradient(circle at top, #020b12 0%, #030916 40%, #060c19 100%);
+        color: #f6f9ff;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 60px 16px 80px;
+      }
+      .page {
+        width: min(960px, 100%);
+        display: flex;
+        flex-direction: column;
+        gap: 32px;
+        text-align: center;
+      }
+      header h1 {
+        margin: 0;
+        font-size: clamp(2.4rem, 4vw + 1rem, 3.2rem);
+        letter-spacing: 0.04em;
+      }
+      header p {
+        margin: 12px auto 0;
+        max-width: 640px;
+        opacity: 0.75;
+        line-height: 1.6;
+        font-size: 1.05rem;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 20px;
+      }
+      .card {
+        position: relative;
+        padding: 22px 20px 24px;
+        border-radius: 18px;
+        border: 1px solid rgba(120, 150, 210, 0.18);
+        background: linear-gradient(155deg, rgba(12, 18, 40, 0.88), rgba(6, 12, 24, 0.92));
+        box-shadow: 0 28px 60px rgba(4, 10, 24, 0.45);
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        text-align: left;
+        transition:
+          transform 180ms ease,
+          border-color 180ms ease;
+      }
+      .card:hover {
+        transform: translateY(-4px);
+        border-color: rgba(140, 180, 255, 0.45);
+      }
+      .card span {
+        font-size: 2.4rem;
+      }
+      .card h2 {
+        margin: 0;
+        font-size: 1.4rem;
+      }
+      .card p {
+        margin: 0;
+        opacity: 0.75;
+        line-height: 1.6;
+      }
+      .card a {
+        margin-top: auto;
+        align-self: flex-start;
+        padding: 10px 16px;
+        border-radius: 999px;
+        background: rgba(136, 176, 255, 0.12);
+        color: #e9f3ff;
+        text-decoration: none;
+        font-weight: 600;
+        letter-spacing: 0.03em;
+        transition: background 180ms ease;
+      }
+      .card a:hover {
+        background: rgba(136, 176, 255, 0.28);
+      }
+      footer {
+        opacity: 0.55;
+        font-size: 0.9rem;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="page">
+      <header>
+        <h1>Web Game Engine Demos</h1>
+        <p>
+          Explore interactive showcases built with the Web Game Engine. Start with Super Snake
+          today; more playable prototypes and documentation will be added here over time.
+        </p>
+      </header>
+      <section class="grid">
+        <article class="card">
+          <span>🐍</span>
+          <h2>Super Snake</h2>
+          <p>
+            Fast, combo-driven take on the classic. Includes touch/gamepad input, power-ups, and
+            hazard arenas.
+          </p>
+          <a href="./super-snake/">Play Demo</a>
+        </article>
+        <article class="card" aria-disabled="true" style="opacity: 0.45">
+          <span>🎮</span>
+          <h2>More Demos Soon</h2>
+          <p>
+            Check back for additional sample games, documentation, and interactive playgrounds as
+            the engine evolves.
+          </p>
+          <a href="#!" style="pointer-events: none">Coming Soon</a>
+        </article>
+      </section>
+      <footer>© Web Game Engine — GitHub Pages Demo</footer>
+    </main>
+  </body>
+</html>
