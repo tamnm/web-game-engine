@@ -2296,7 +2296,6 @@ class K extends re {
           level: r
             ? {
                 id: r.levelId,
-                name: r.levelName,
                 obstacles: r.obstacles.map((l) => ({ x: l.x, y: l.y })),
                 hazards: r.hazards.map((l) => ({
                   id: l.id,

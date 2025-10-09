@@ -25,6 +25,9 @@ function ensureDir(dir) {
 }
 
 function main() {
+  console.log('🛠  Building @web-game-engine/core…');
+  run('npm run build --workspace @web-game-engine/core');
+
   console.log('🛠  Building Super Snake for GitHub Pages…');
   run('npm run build --workspace @web-game-engine/super-snake');
 
