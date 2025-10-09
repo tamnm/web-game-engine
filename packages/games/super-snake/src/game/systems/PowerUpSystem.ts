@@ -10,6 +10,8 @@ import {
   SnakeComponent,
   FoodState,
   FoodStateComponent,
+  LevelState,
+  LevelStateComponent,
 } from '../components';
 import {
   computePowerUpSpawnCells,
@@ -24,7 +26,7 @@ export function createPowerUpSystem(): System {
   return {
     id: 'super-snake.systems.power-ups',
     stage: 'update',
-    order: 1,
+    order: 2,
     execute: ({ world, elapsed }) => {
       const rows = world.query({
         all: [Grid, Snake, PowerUpConfig, PowerUpState],
@@ -42,6 +44,7 @@ export function createPowerUpSystem(): System {
           | PowerUpStateComponent
           | undefined;
         const foods = world.getComponent(entity, FoodState) as FoodStateComponent | undefined;
+        const level = world.getComponent(entity, LevelState) as LevelStateComponent | undefined;
 
         if (!grid || !snake || !config || !powerUps) {
           continue;
@@ -82,7 +85,7 @@ export function createPowerUpSystem(): System {
           elapsed - powerUps.lastSpawnAt >= config.spawnIntervalMs;
 
         if (canSpawn && snake.segments.length > 0) {
-          const available = computePowerUpSpawnCells(grid, snake, foods, powerUps);
+          const available = computePowerUpSpawnCells(grid, snake, foods, powerUps, level);
           if (available.length > 0) {
             const cell = available[Math.floor(random() * available.length)];
             const definition = selectPowerUpDefinition(config, random);

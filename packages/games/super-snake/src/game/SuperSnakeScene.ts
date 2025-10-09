@@ -11,10 +11,13 @@ import {
   SnakeGameMode,
   PowerUpState,
   PowerUpStateComponent,
+  LevelState,
+  LevelStateComponent,
 } from './components';
 import { createSnakeMovementSystem } from './systems/SnakeMovementSystem';
 import { createFoodSystem } from './systems/FoodSystem';
 import { createPowerUpSystem } from './systems/PowerUpSystem';
+import { createHazardSystem } from './systems/HazardSystem';
 import { spawnSuperSnake, SuperSnakeOptions } from './factory';
 import { SuperSnakeInput, SuperSnakeInputOptions } from './input';
 import { setNextDirection } from './Snake';
@@ -35,6 +38,7 @@ export interface SuperSnakeSceneOptions extends SuperSnakeOptions {
 export class SuperSnakeScene extends Scene {
   private readonly movementSystemId = 'super-snake.systems.snake-movement';
   private readonly foodSystemId = 'super-snake.systems.food';
+  private readonly hazardSystemId = 'super-snake.systems.hazards';
   private readonly powerUpSystemId = 'super-snake.systems.power-ups';
   private readonly context: CanvasRenderingContext2D;
   private readonly options: SuperSnakeOptions;
@@ -75,6 +79,7 @@ export class SuperSnakeScene extends Scene {
 
   override onEnter(): void {
     this.world.registerSystem(createSnakeMovementSystem());
+    this.world.registerSystem(createHazardSystem());
     this.world.registerSystem(createPowerUpSystem());
     this.world.registerSystem(createFoodSystem());
     this.input.attach(this.context.canvas);
@@ -85,6 +90,7 @@ export class SuperSnakeScene extends Scene {
   override onExit(): void {
     this.world.unregisterSystem(this.movementSystemId);
     this.world.unregisterSystem(this.foodSystemId);
+    this.world.unregisterSystem(this.hazardSystemId);
     this.world.unregisterSystem(this.powerUpSystemId);
     this.input.detach();
     this.ui.dispose();
@@ -128,6 +134,9 @@ export class SuperSnakeScene extends Scene {
     const powerUps = this.world.getComponent(this.snakeEntity, PowerUpState) as
       | PowerUpStateComponent
       | undefined;
+    const level = this.world.getComponent(this.snakeEntity, LevelState) as
+      | LevelStateComponent
+      | undefined;
     if (!grid || !snake || !food) {
       return;
     }
@@ -140,11 +149,12 @@ export class SuperSnakeScene extends Scene {
 
     ctx.save();
     ctx.setTransform(this.devicePixelRatio, 0, 0, this.devicePixelRatio, 0, 0);
-    ctx.fillStyle = '#051622';
+    const theme = level?.theme;
+    ctx.fillStyle = theme?.backgroundColor ?? '#051622';
     ctx.fillRect(0, 0, logicalWidth, logicalHeight);
 
     // Draw grid lines for clarity while prototyping.
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+    ctx.strokeStyle = theme?.gridLineColor ?? 'rgba(255, 255, 255, 0.05)';
     ctx.lineWidth = 1;
     for (let x = 0; x <= grid.width; x += 1) {
       ctx.beginPath();
@@ -157,6 +167,15 @@ export class SuperSnakeScene extends Scene {
       ctx.moveTo(0, y * grid.cellSize);
       ctx.lineTo(logicalWidth, y * grid.cellSize);
       ctx.stroke();
+    }
+
+    if (level && level.obstacles.length > 0) {
+      ctx.fillStyle = theme?.obstacleColor ?? '#2c3e50';
+      level.obstacles.forEach((cell) => {
+        const x = cell.x * grid.cellSize;
+        const y = cell.y * grid.cellSize;
+        ctx.fillRect(x, y, grid.cellSize, grid.cellSize);
+      });
     }
 
     // Draw food before snake so the snake overlaps when on top.
@@ -193,18 +212,41 @@ export class SuperSnakeScene extends Scene {
       });
     }
 
+    if (level && level.hazards.length > 0) {
+      const hazardColor = theme?.hazardColor ?? '#f26c6c';
+      const pulse = 0.85 + Math.sin(this.elapsedMs / 280) * 0.1;
+      level.hazards.forEach((hazard) => {
+        const centerX = hazard.position.x * grid.cellSize + grid.cellSize / 2;
+        const centerY = hazard.position.y * grid.cellSize + grid.cellSize / 2;
+        const radius = grid.cellSize * 0.4 * pulse;
+        ctx.beginPath();
+        ctx.fillStyle = hazardColor;
+        ctx.globalAlpha = 0.8;
+        ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+      });
+    }
+
     // Draw snake body.
-    ctx.fillStyle = '#2ecc71';
+    const bodyColor = theme?.snakeBodyColor ?? '#2ecc71';
+    const headColor = theme?.snakeHeadColor ?? '#ffffff';
     snake.segments.forEach((segment, index) => {
       const padding = index === 0 ? 2 : 4;
       const size = grid.cellSize - padding * 2;
       const x = segment.x * grid.cellSize + padding;
       const y = segment.y * grid.cellSize + padding;
+      ctx.fillStyle = index === 0 ? headColor : bodyColor;
       ctx.fillRect(x, y, size, size);
     });
 
     if (!snake.alive) {
       ctx.fillStyle = 'rgba(255, 64, 64, 0.35)';
+      ctx.fillRect(0, 0, logicalWidth, logicalHeight);
+    }
+
+    if (theme?.overlayColor) {
+      ctx.fillStyle = theme.overlayColor;
       ctx.fillRect(0, 0, logicalWidth, logicalHeight);
     }
 
@@ -242,6 +284,12 @@ export class SuperSnakeScene extends Scene {
       items: { id: number; type: string; x: number; y: number }[];
       active: { id: number; type: string; expiresAt: number }[];
     };
+    level?: {
+      id: string;
+      obstacles: { x: number; y: number }[];
+      hazards: { id: number; type: string; x: number; y: number }[];
+      theme: { id: string };
+    };
     state: {
       score: number;
       comboCount: number;
@@ -254,6 +302,9 @@ export class SuperSnakeScene extends Scene {
     const food = this.world.getComponent(this.snakeEntity, FoodState);
     const powerUps = this.world.getComponent(this.snakeEntity, PowerUpState) as
       | PowerUpStateComponent
+      | undefined;
+    const level = this.world.getComponent(this.snakeEntity, LevelState) as
+      | LevelStateComponent
       | undefined;
     const state = this.world.getComponent(this.snakeEntity, SnakeGameState) as
       | SnakeGameStateComponent
@@ -284,6 +335,19 @@ export class SuperSnakeScene extends Scene {
               type: entry.type,
               expiresAt: entry.expiresAt,
             })),
+          }
+        : undefined,
+      level: level
+        ? {
+            id: level.levelId,
+            obstacles: level.obstacles.map((cell) => ({ x: cell.x, y: cell.y })),
+            hazards: level.hazards.map((hazard) => ({
+              id: hazard.id,
+              type: hazard.definitionId,
+              x: hazard.position.x,
+              y: hazard.position.y,
+            })),
+            theme: { id: level.theme.id },
           }
         : undefined,
       state: {

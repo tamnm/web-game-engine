@@ -2,26 +2,32 @@ import type { World } from '@web-game-engine/core';
 import {
   FoodConfig,
   FoodConfigComponent,
+  FoodDefinition,
   FoodState,
   FoodStateComponent,
   Grid,
   GridComponent,
   GridMode,
-  Snake,
-  SnakeComponent,
-  SnakeDirection,
-  SnakeGameState,
-  SnakeMovement,
-  FoodDefinition,
+  LevelConfig,
+  LevelConfigComponent,
+  LevelDefinition,
+  LevelState,
+  LevelStateComponent,
   PowerUpConfig,
   PowerUpConfigComponent,
   PowerUpDefinition,
   PowerUpState,
   PowerUpStateComponent,
+  Snake,
+  SnakeComponent,
+  SnakeDirection,
+  SnakeGameState,
+  SnakeMovement,
 } from './components';
 import { directionToVector, GridPosition } from './Grid';
 import { initializeSnake } from './Snake';
 import { computeAvailableCells, createFoodItem, selectFoodDefinition } from './Food';
+import { collectBlockedCells, initializeLevelState } from './Level';
 
 export interface SuperSnakeOptions {
   gridWidth?: number;
@@ -41,6 +47,8 @@ export interface SuperSnakeOptions {
   powerUpMaxActive?: number;
   powerUpSpawnIntervalMs?: number;
   powerUpInitialDelayMs?: number;
+  levelId?: string;
+  levelDefinitions?: LevelDefinition[];
 }
 
 export function spawnSuperSnake(world: World, options: SuperSnakeOptions = {}): number {
@@ -90,6 +98,26 @@ export function spawnSuperSnake(world: World, options: SuperSnakeOptions = {}): 
   state.mode = grid.mode;
   world.addComponent(entity, SnakeGameState, state);
 
+  const levelConfigDefaults = LevelConfig.defaults!();
+  const levelConfig: LevelConfigComponent = {
+    levels:
+      options.levelDefinitions ??
+      levelConfigDefaults.levels.map((level) => ({
+        ...level,
+        theme: { ...level.theme },
+        obstacles: level.obstacles.map((cell) => ({ ...cell })),
+        hazards: level.hazards.map((hazard) => ({
+          ...hazard,
+          path: hazard.path.map((cell) => ({ ...cell })),
+        })),
+      })),
+    defaultLevelId: options.levelId ?? levelConfigDefaults.defaultLevelId,
+  };
+  world.addComponent(entity, LevelConfig, levelConfig);
+  const levelState = LevelState.defaults!();
+  initializeLevelState(levelConfig, levelState, options.levelId, 0);
+  world.addComponent(entity, LevelState, levelState);
+
   const foodConfigDefaults = FoodConfig.defaults!();
   const foodConfig: FoodConfigComponent = {
     ...foodConfigDefaults,
@@ -103,7 +131,7 @@ export function spawnSuperSnake(world: World, options: SuperSnakeOptions = {}): 
   world.addComponent(entity, FoodConfig, foodConfig);
   const foodState = FoodState.defaults!();
   world.addComponent(entity, FoodState, foodState);
-  seedInitialFood(foodConfig, foodState, grid, snake);
+  seedInitialFood(foodConfig, foodState, grid, snake, levelState);
 
   const powerUpConfigDefaults = PowerUpConfig.defaults!();
   const powerUpConfig: PowerUpConfigComponent = {
@@ -127,12 +155,14 @@ function seedInitialFood(
   config: FoodConfigComponent,
   state: FoodStateComponent,
   grid: GridComponent,
-  snake: SnakeComponent
+  snake: SnakeComponent,
+  level?: LevelStateComponent
 ): void {
   const random = config.random ?? Math.random;
   const target = Math.min(config.maxActive, grid.width * grid.height - snake.segments.length);
   for (let i = state.items.length; i < target; i += 1) {
-    const available = computeAvailableCells(grid, snake, state);
+    const blocked = collectBlockedCells(level);
+    const available = computeAvailableCells(grid, snake, state, blocked);
     if (available.length === 0) break;
     const cell = available[Math.floor(random() * available.length)];
     const definition = selectFoodDefinition(config, random);

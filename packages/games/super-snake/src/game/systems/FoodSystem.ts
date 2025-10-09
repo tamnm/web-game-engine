@@ -6,6 +6,8 @@ import {
   FoodStateComponent,
   Grid,
   GridComponent,
+  LevelState,
+  LevelStateComponent,
   PowerUpState,
   PowerUpStateComponent,
   Snake,
@@ -16,12 +18,13 @@ import {
 import { computeAvailableCells, createFoodItem, selectFoodDefinition } from '../Food';
 import { getHead } from '../Snake';
 import { getMagnetRange, getScoreMultiplier } from '../PowerUps';
+import { collectBlockedCells } from '../Level';
 
 export function createFoodSystem(): System {
   return {
     id: 'super-snake.systems.food',
     stage: 'update',
-    order: 2,
+    order: 3,
     execute: ({ world, elapsed }) => {
       const rows = world.query({
         all: [Grid, Snake, SnakeGameState, FoodConfig, FoodState],
@@ -40,6 +43,7 @@ export function createFoodSystem(): System {
         const powerUps = world.getComponent(entity, PowerUpState) as
           | PowerUpStateComponent
           | undefined;
+        const level = world.getComponent(entity, LevelState) as LevelStateComponent | undefined;
 
         if (!grid || !snake || !state || !config || !food) {
           continue;
@@ -75,7 +79,8 @@ export function createFoodSystem(): System {
           food.items.length < config.maxActive &&
           elapsed - food.lastSpawnAt >= config.spawnIntervalMs
         ) {
-          const available = computeAvailableCells(grid, snake, food);
+          const blocked = collectBlockedCells(level);
+          const available = computeAvailableCells(grid, snake, food, blocked);
           if (available.length === 0) {
             break;
           }

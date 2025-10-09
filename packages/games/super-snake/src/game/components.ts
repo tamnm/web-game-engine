@@ -1,4 +1,6 @@
 import type { ComponentDefinition } from '@web-game-engine/core';
+import type { GridPosition } from './Grid';
+import { generateAuroraObstacles } from './Level';
 
 export type GridMode = 'wrap' | 'solid';
 
@@ -290,5 +292,115 @@ export const PowerUpState: ComponentDefinition<PowerUpStateComponent> = {
     active: [],
     lastSpawnAt: -Infinity,
     nextId: 1,
+  }),
+};
+
+export interface LevelThemeDefinition {
+  id: string;
+  backgroundColor: string;
+  gridLineColor: string;
+  snakeBodyColor: string;
+  snakeHeadColor?: string;
+  obstacleColor: string;
+  hazardColor: string;
+  overlayColor?: string;
+}
+
+export interface LevelObstacle {
+  x: number;
+  y: number;
+}
+
+export interface LevelHazardDefinition {
+  id: string;
+  path: GridPosition[];
+  stepIntervalMs: number;
+  pingPong?: boolean;
+}
+
+export interface LevelDefinition {
+  id: string;
+  name: string;
+  theme: LevelThemeDefinition;
+  obstacles: LevelObstacle[];
+  hazards: LevelHazardDefinition[];
+}
+
+export interface HazardInstance {
+  id: number;
+  definitionId: string;
+  position: GridPosition;
+  pathIndex: number;
+  direction: 1 | -1;
+  nextMoveAt: number;
+}
+
+export interface LevelConfigComponent {
+  levels: LevelDefinition[];
+  defaultLevelId: string;
+}
+
+export const LevelConfig: ComponentDefinition<LevelConfigComponent> = {
+  name: 'super-snake.levelConfig',
+  defaults: () => {
+    const gridWidth = 16;
+    const gridHeight = 16;
+    const { obstacles, hazards } = generateAuroraObstacles(gridWidth, gridHeight, 'aurora');
+
+    const theme: LevelThemeDefinition = {
+      id: 'aurora',
+      backgroundColor: '#041924',
+      gridLineColor: 'rgba(255, 255, 255, 0.06)',
+      snakeBodyColor: '#74f7b4',
+      snakeHeadColor: '#c6ffe0',
+      obstacleColor: '#1b2f3c',
+      hazardColor: '#f26c6c',
+      overlayColor: 'rgba(36, 23, 58, 0.2)',
+    };
+
+    return {
+      levels: [
+        {
+          id: 'aurora-garden',
+          name: 'Aurora Garden',
+          theme,
+          obstacles,
+          hazards,
+        },
+      ],
+      defaultLevelId: 'aurora-garden',
+    };
+  },
+};
+
+export interface LevelStateComponent {
+  levelId: string;
+  theme: LevelThemeDefinition;
+  obstacles: LevelObstacle[];
+  obstacleSet: Set<string>;
+  hazardDefinitions: Record<string, LevelHazardDefinition>;
+  hazards: HazardInstance[];
+  nextHazardId: number;
+}
+
+export const LevelState: ComponentDefinition<LevelStateComponent> = {
+  name: 'super-snake.levelState',
+  defaults: () => ({
+    levelId: 'default',
+    theme: {
+      id: 'default',
+      backgroundColor: '#051622',
+      gridLineColor: 'rgba(255, 255, 255, 0.05)',
+      snakeBodyColor: '#2ecc71',
+      snakeHeadColor: '#a2ffd9',
+      obstacleColor: '#234052',
+      hazardColor: '#f25f5c',
+      overlayColor: undefined,
+    },
+    obstacles: [],
+    obstacleSet: new Set<string>(),
+    hazardDefinitions: {},
+    hazards: [],
+    nextHazardId: 1,
   }),
 };

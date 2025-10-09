@@ -2,6 +2,7 @@ import {
   ActivePowerUp,
   FoodStateComponent,
   GridComponent,
+  LevelStateComponent,
   PowerUpConfigComponent,
   PowerUpDefinition,
   PowerUpEffectConfig,
@@ -11,6 +12,7 @@ import {
   SnakeComponent,
 } from './components';
 import type { GridPosition } from './Grid';
+import { collectBlockedCells } from './Level';
 
 export function selectPowerUpDefinition(
   config: PowerUpConfigComponent,
@@ -53,7 +55,8 @@ export function computePowerUpSpawnCells(
   grid: GridComponent,
   snake: SnakeComponent,
   foods: FoodStateComponent | undefined,
-  powerUps: PowerUpStateComponent
+  powerUps: PowerUpStateComponent,
+  level?: LevelStateComponent
 ): GridPosition[] {
   const occupied = new Set<string>();
   snake.segments.forEach((segment) => {
@@ -65,6 +68,10 @@ export function computePowerUpSpawnCells(
   powerUps.items.forEach((item) => {
     occupied.add(`${item.x},${item.y}`);
   });
+  if (level) {
+    const blocked = collectBlockedCells(level);
+    blocked.forEach((cell) => occupied.add(`${cell.x},${cell.y}`));
+  }
   const cells: GridPosition[] = [];
   for (let y = 0; y < grid.height; y += 1) {
     for (let x = 0; x < grid.width; x += 1) {

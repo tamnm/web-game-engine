@@ -10,10 +10,13 @@ import {
   SnakeMovementComponent,
   PowerUpState,
   PowerUpStateComponent,
+  LevelState,
+  LevelStateComponent,
 } from '../components';
 import { advancePosition } from '../Grid';
 import { applyNextDirection, getHead, stepSnake, willSelfCollide } from '../Snake';
 import { getMovementSpeedMultiplier, isGhostPhaseActive } from '../PowerUps';
+import { getHazardAtPosition, isObstacleCell } from '../Level';
 
 export function createSnakeMovementSystem(): System {
   return {
@@ -39,6 +42,7 @@ export function createSnakeMovementSystem(): System {
         const powerUps = world.getComponent(entity, PowerUpState) as
           | PowerUpStateComponent
           | undefined;
+        const level = world.getComponent(entity, LevelState) as LevelStateComponent | undefined;
 
         if (!grid || !snake || !movement || !state) {
           continue;
@@ -67,8 +71,12 @@ export function createSnakeMovementSystem(): System {
           );
 
           const selfCollision = ghostPhase ? false : willSelfCollide(snake, nextPosition);
+          const obstacleCollision = level ? isObstacleCell(level, nextPosition) : false;
+          const hazardCollision = level
+            ? getHazardAtPosition(level, nextPosition) !== undefined
+            : false;
 
-          if (collided || selfCollision) {
+          if (collided || selfCollision || obstacleCollision || hazardCollision) {
             snake.alive = false;
             movement.accumulatorMs = 0;
             break;

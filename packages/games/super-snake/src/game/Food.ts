@@ -31,7 +31,8 @@ export function selectFoodDefinition(
 export function computeAvailableCells(
   grid: GridComponent,
   snake: SnakeComponent,
-  foods: FoodStateComponent
+  foods: FoodStateComponent,
+  extraBlocked: Iterable<GridPosition> = []
 ): GridPosition[] {
   const occupied = new Set<string>();
   snake.segments.forEach((segment) => {
@@ -40,6 +41,9 @@ export function computeAvailableCells(
   foods.items.forEach((item) => {
     occupied.add(`${item.x},${item.y}`);
   });
+  for (const cell of extraBlocked) {
+    occupied.add(`${cell.x},${cell.y}`);
+  }
   const cells: GridPosition[] = [];
   for (let y = 0; y < grid.height; y += 1) {
     for (let x = 0; x < grid.width; x += 1) {
