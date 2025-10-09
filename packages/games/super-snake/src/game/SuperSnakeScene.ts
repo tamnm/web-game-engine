@@ -11,6 +11,9 @@ import {
   SnakeGameMode,
   PowerUpState,
   PowerUpStateComponent,
+  PowerUpConfig,
+  PowerUpConfigComponent,
+  PowerUpType,
   LevelState,
   LevelStateComponent,
 } from './components';
@@ -45,6 +48,7 @@ export class SuperSnakeScene extends Scene {
   private readonly input: SuperSnakeInput;
   private readonly ui: SuperSnakeUI;
   private readonly leaderboard: LeaderboardStorage;
+  private highScore = 0;
   private snakeEntity: number | null = null;
   private devicePixelRatio = 1;
   private phase: 'menu' | 'playing' | 'paused' | 'game-over' = 'menu';
@@ -64,8 +68,11 @@ export class SuperSnakeScene extends Scene {
     this.input = new SuperSnakeInput(input);
     this.leaderboard = new LeaderboardStorage(leaderboard);
     this.ui = new SuperSnakeUI({ container: context.canvas.parentElement ?? undefined, ...ui });
+    this.styleCanvas(context.canvas);
     this.ui.setState('main-menu');
-    this.ui.setLeaderboard(this.leaderboard.load());
+    const initialEntries = this.leaderboard.load();
+    this.highScore = this.computeHighScore(initialEntries);
+    this.ui.setLeaderboard(initialEntries);
     this.registerUiEvents();
     this.input.onPause(() => {
       if (this.phase === 'playing') {
@@ -214,17 +221,32 @@ export class SuperSnakeScene extends Scene {
 
     if (level && level.hazards.length > 0) {
       const hazardColor = theme?.hazardColor ?? '#f26c6c';
+      const hazardIcon = theme?.hazardIcon ?? '✴️';
       const pulse = 0.85 + Math.sin(this.elapsedMs / 280) * 0.1;
+      const hazardsDisabled = level.hazardsDisabledUntil > this.elapsedMs;
       level.hazards.forEach((hazard) => {
         const centerX = hazard.position.x * grid.cellSize + grid.cellSize / 2;
         const centerY = hazard.position.y * grid.cellSize + grid.cellSize / 2;
         const radius = grid.cellSize * 0.4 * pulse;
         ctx.beginPath();
         ctx.fillStyle = hazardColor;
-        ctx.globalAlpha = 0.8;
+        ctx.globalAlpha = hazardsDisabled ? 0.25 : 0.8;
         ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
         ctx.fill();
+        if (hazardsDisabled) {
+          ctx.lineWidth = 2;
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
+          ctx.setLineDash([4, 4]);
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
         ctx.globalAlpha = 1;
+        const iconSize = Math.max(16, Math.floor(grid.cellSize * 0.6));
+        ctx.font = `${iconSize}px "Noto Color Emoji", "Apple Color Emoji", "Segoe UI Emoji", system-ui`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = hazardsDisabled ? 'rgba(255, 255, 255, 0.6)' : '#ffffff';
+        ctx.fillText(hazardIcon, centerX, centerY);
       });
     }
 
@@ -266,6 +288,100 @@ export class SuperSnakeScene extends Scene {
     if (canvas.width !== pixelWidth || canvas.height !== pixelHeight) {
       canvas.width = pixelWidth;
       canvas.height = pixelHeight;
+    }
+  }
+
+  private styleCanvas(canvas: HTMLCanvasElement): void {
+    const s = canvas.style;
+    s.display = 'block';
+    s.margin = '0 auto';
+    s.maxWidth = '100%';
+    s.height = 'auto';
+    s.borderRadius = '16px';
+    s.boxShadow = '0 24px 48px rgba(5, 12, 20, 0.45)';
+    s.backgroundColor = 'transparent';
+  }
+
+  private computeHighScore(entries: LeaderboardEntry[]): number {
+    return entries.reduce((acc, entry) => Math.max(acc, entry.score), 0);
+  }
+
+  private buildHudState(): {
+    levelName: string;
+    score: number;
+    combo: number;
+    highScore: number;
+    activePowerUps: Array<{
+      id: number;
+      icon: string;
+      label: string;
+      remainingMs: number;
+    }>;
+  } | null {
+    if (this.snakeEntity === null) return null;
+    const state = this.world.getComponent(this.snakeEntity, SnakeGameState) as
+      | SnakeGameStateComponent
+      | undefined;
+    if (!state) return null;
+    const level = this.world.getComponent(this.snakeEntity, LevelState) as
+      | LevelStateComponent
+      | undefined;
+    const powerUps = this.world.getComponent(this.snakeEntity, PowerUpState) as
+      | PowerUpStateComponent
+      | undefined;
+    const config = this.world.getComponent(this.snakeEntity, PowerUpConfig) as
+      | PowerUpConfigComponent
+      | undefined;
+
+    const iconMap = new Map<PowerUpType, { icon: string; label: string }>();
+    config?.definitions.forEach((definition) => {
+      iconMap.set(definition.type, {
+        icon: definition.icon,
+        label: this.formatPowerUpType(definition.type),
+      });
+    });
+
+    const activePowerUps =
+      powerUps?.active
+        .filter((entry) => entry.expiresAt > this.elapsedMs)
+        .map((entry) => {
+          const mapping = iconMap.get(entry.type);
+          return {
+            id: entry.id,
+            icon: mapping?.icon ?? '✨',
+            label: mapping?.label ?? this.formatPowerUpType(entry.type),
+            remainingMs: Math.max(0, entry.expiresAt - this.elapsedMs),
+          };
+        })
+        .sort((a, b) => a.remainingMs - b.remainingMs) ?? [];
+
+    return {
+      levelName: level?.levelName ?? 'Arcade',
+      score: state.score,
+      combo: state.comboCount,
+      highScore: Math.max(this.highScore, state.score),
+      activePowerUps,
+    };
+  }
+
+  private updateHud(): void {
+    this.ui.setHudState(this.buildHudState());
+  }
+
+  private formatPowerUpType(type: PowerUpType): string {
+    switch (type) {
+      case 'slow-mo':
+        return 'Slow-Mo';
+      case 'ghost':
+        return 'Ghost';
+      case 'magnet':
+        return 'Magnet';
+      case 'double-score':
+        return 'Double Score';
+      case 'shockwave':
+        return 'Shockwave';
+      default:
+        return type;
     }
   }
 
@@ -340,6 +456,7 @@ export class SuperSnakeScene extends Scene {
       level: level
         ? {
             id: level.levelId,
+            name: level.levelName,
             obstacles: level.obstacles.map((cell) => ({ x: cell.x, y: cell.y })),
             hazards: level.hazards.map((hazard) => ({
               id: hazard.id,
@@ -378,16 +495,10 @@ export class SuperSnakeScene extends Scene {
   }
 
   private syncHudWithState(): void {
-    if (this.phase !== 'playing' || this.snakeEntity === null) {
+    if (this.snakeEntity === null) {
       return;
     }
-    const state = this.world.getComponent(this.snakeEntity, SnakeGameState) as
-      | SnakeGameStateComponent
-      | undefined;
-    if (!state) {
-      return;
-    }
-    this.ui.setHudStats({ score: state.score, combo: state.comboCount });
+    this.updateHud();
   }
 
   startGame(mode: SnakeGameMode): void {
@@ -401,11 +512,7 @@ export class SuperSnakeScene extends Scene {
     this.lastScoreSnapshot = null;
     this.ui.setLastScore(null);
     this.ui.setReplayPreview(null);
-    const state = this.world.getComponent(this.snakeEntity, SnakeGameState);
-    const initialScore = state
-      ? { score: state.score, combo: state.comboCount }
-      : { score: 0, combo: 0 };
-    this.ui.setHudStats(initialScore);
+    this.updateHud();
     this.setPhase('playing');
     this.ui.setState('playing');
   }
@@ -454,6 +561,8 @@ export class SuperSnakeScene extends Scene {
     this.ui.setLeaderboard(updated);
     this.ui.setReplayPreview(entry);
     this.ui.setState('leaderboard');
+    this.highScore = this.computeHighScore(updated);
+    this.updateHud();
   }
 
   private deleteEntry(entry: LeaderboardEntry): void {
@@ -462,6 +571,8 @@ export class SuperSnakeScene extends Scene {
     if (this.ui.getState() === 'replay-view') {
       this.ui.setReplayPreview(null);
     }
+    this.highScore = this.computeHighScore(updated);
+    this.updateHud();
   }
 
   private registerUiEvents(): void {
@@ -488,8 +599,10 @@ export class SuperSnakeScene extends Scene {
 
   private setPhase(phase: typeof this.phase): void {
     this.phase = phase;
-    if (phase !== 'playing') {
-      this.ui.setHudStats(null);
+    if (phase === 'playing' || phase === 'paused') {
+      this.updateHud();
+    } else {
+      this.ui.setHudState(null);
     }
   }
 }

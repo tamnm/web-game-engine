@@ -44,19 +44,34 @@ describe('SuperSnakeUI', () => {
     document.body.appendChild(container);
     const ui = new SuperSnakeUI({ container });
 
-    ui.setHudStats({ score: 12, combo: 2 });
     ui.setState('playing');
+    ui.setHudState({
+      levelName: 'Aurora',
+      score: 12,
+      combo: 2,
+      highScore: 120,
+      activePowerUps: [],
+    });
 
     const hud = container.querySelector('[data-testid="super-snake-hud"]') as HTMLDivElement | null;
     expect(hud).toBeTruthy();
-    expect(hud?.textContent).toContain('Score 12');
-    expect(hud?.textContent).toContain('Combo x2');
+    expect(hud?.textContent).toContain('Aurora');
+    expect(hud?.textContent).toContain('12');
+    expect(hud?.textContent).toContain('x2');
+    expect(hud?.textContent).toContain('120');
 
-    ui.setHudStats({ score: 28, combo: 5 });
-    expect(hud?.textContent).toContain('Score 28');
-    expect(hud?.textContent).toContain('Combo x5');
+    ui.setHudState({
+      levelName: 'Aurora',
+      score: 28,
+      combo: 5,
+      highScore: 200,
+      activePowerUps: [{ id: 1, icon: '🧲', label: 'Magnet', remainingMs: 4200 }],
+    });
+    expect(hud?.textContent).toContain('28');
+    expect(hud?.textContent).toContain('x5');
+    expect(hud?.textContent).toContain('Magnet');
 
-    ui.setHudStats(null);
+    ui.setHudState(null);
     expect(container.querySelector('[data-testid="super-snake-hud"]')).toBeNull();
 
     ui.dispose();

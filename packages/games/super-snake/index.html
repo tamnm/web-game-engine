@@ -4,13 +4,48 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Super Snake · Web Game Engine</title>
+    <style>
+      :root {
+        color-scheme: dark;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: linear-gradient(180deg, #020b12 0%, #081324 100%);
+        color: #f1f6ff;
+        font-family: 'Inter', 'Segoe UI', 'Roboto', 'Helvetica Neue', sans-serif;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      #super-snake-root {
+        width: 100%;
+        max-width: 960px;
+        margin: 0 auto;
+        padding: 120px 16px 64px;
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 32px;
+      }
+      canvas {
+        max-width: 100%;
+      }
+    </style>
   </head>
   <body>
     <noscript>This demo requires JavaScript.</noscript>
+    <div id="super-snake-root"></div>
     <script type="module">
       import { bootSuperSnake } from '/src/main.ts';
 
-      bootSuperSnake().catch((error) => {
+      const root = document.getElementById('super-snake-root');
+      if (!root) {
+        throw new Error('Failed to find root element for Super Snake');
+      }
+
+      bootSuperSnake({ container: root }).catch((error) => {
         console.error('Failed to boot Super Snake', error);
       });
     </script>

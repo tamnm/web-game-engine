@@ -73,6 +73,12 @@ export function createPowerUpSystem(): System {
                   effect: { ...definition.effect },
                 });
               }
+              if (definition.effect.hazardDisableMs && level) {
+                level.hazardsDisabledUntil = Math.max(
+                  level.hazardsDisabledUntil,
+                  elapsed + definition.effect.hazardDisableMs
+                );
+              }
             }
           }
         }

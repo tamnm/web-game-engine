@@ -103,6 +103,25 @@ describe('Super Snake integration', () => {
         foodMaxActive: 1,
         random,
         autoStartMode: 'classic',
+        levelId: 'test-lab',
+        levelDefinitions: [
+          {
+            id: 'test-lab',
+            name: 'Test Lab',
+            theme: {
+              id: 'test-theme',
+              backgroundColor: '#021016',
+              gridLineColor: 'rgba(255, 255, 255, 0.08)',
+              snakeBodyColor: '#8ef9b0',
+              snakeHeadColor: '#c8ffe0',
+              obstacleColor: '#123042',
+              hazardColor: '#f26c6c',
+              overlayColor: undefined,
+            },
+            obstacles: [],
+            hazards: [],
+          },
+        ],
       },
     });
 

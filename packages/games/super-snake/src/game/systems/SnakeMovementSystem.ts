@@ -71,10 +71,12 @@ export function createSnakeMovementSystem(): System {
           );
 
           const selfCollision = ghostPhase ? false : willSelfCollide(snake, nextPosition);
+          const hazardsDisabled = level ? level.hazardsDisabledUntil > elapsed : false;
           const obstacleCollision = level ? isObstacleCell(level, nextPosition) : false;
-          const hazardCollision = level
-            ? getHazardAtPosition(level, nextPosition) !== undefined
-            : false;
+          const hazardCollision =
+            level && !hazardsDisabled
+              ? getHazardAtPosition(level, nextPosition) !== undefined
+              : false;
 
           if (collided || selfCollision || obstacleCollision || hazardCollision) {
             snake.alive = false;

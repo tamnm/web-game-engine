@@ -136,5 +136,6 @@ export function mergeEffectConfigs(
     ghostPhase: source.ghostPhase ?? target.ghostPhase,
     scoreMultiplier: source.scoreMultiplier ?? target.scoreMultiplier,
     magnetRange: source.magnetRange ?? target.magnetRange,
+    hazardDisableMs: source.hazardDisableMs ?? target.hazardDisableMs,
   };
 }

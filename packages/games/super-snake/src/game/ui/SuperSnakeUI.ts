@@ -39,6 +39,21 @@ export interface SuperSnakeUIOptions {
   availableModes?: SnakeGameMode[];
 }
 
+interface HudPowerUpInfo {
+  id: number;
+  icon: string;
+  label: string;
+  remainingMs: number;
+}
+
+interface HudState {
+  levelName: string;
+  score: number;
+  combo: number;
+  highScore: number;
+  activePowerUps: HudPowerUpInfo[];
+}
+
 export class SuperSnakeUI {
   private readonly overlay: UIOverlay;
   private state: UIState = 'main-menu';
@@ -49,10 +64,13 @@ export class SuperSnakeUI {
   private replayPreview: LeaderboardEntry | null = null;
   private readonly listeners = new Map<keyof SuperSnakeUIEvents, Set<unknown>>();
   private modeFeedback: string | null = null;
-  private hudStats: { score: number; combo: number } | null = null;
-  private hudPanel: HTMLDivElement | null = null;
+  private hudState: HudState | null = null;
+  private hudBar: HTMLDivElement | null = null;
+  private hudLevelLabel: HTMLDivElement | null = null;
   private hudScoreLabel: HTMLDivElement | null = null;
   private hudComboLabel: HTMLDivElement | null = null;
+  private hudHighScoreLabel: HTMLDivElement | null = null;
+  private hudPowerUpsContainer: HTMLDivElement | null = null;
 
   constructor(options: SuperSnakeUIOptions = {}) {
     this.overlay = new UIOverlay({ container: options.container });
@@ -113,14 +131,14 @@ export class SuperSnakeUI {
     }
   }
 
-  setHudStats(stats: { score: number; combo: number } | null): void {
-    this.hudStats = stats;
-    if (stats === null) {
+  setHudState(state: HudState | null): void {
+    this.hudState = state;
+    if (state === null) {
       this.destroyHud();
       return;
     }
-    if (this.state === 'playing') {
-      this.ensureHud();
+    if (this.state === 'playing' || this.state === 'paused') {
+      this.ensureHudBar();
       this.updateHudContent();
     }
   }
@@ -132,9 +150,13 @@ export class SuperSnakeUI {
 
   private render(): void {
     this.overlay.clear();
-    this.hudPanel = null;
-    this.hudScoreLabel = null;
-    this.hudComboLabel = null;
+    this.resetHudRefs();
+
+    if (this.hudState && (this.state === 'playing' || this.state === 'paused')) {
+      this.ensureHudBar();
+      this.updateHudContent();
+    }
+
     switch (this.state) {
       case 'main-menu':
         this.renderMainMenu();
@@ -158,7 +180,6 @@ export class SuperSnakeUI {
         this.renderReplayView();
         break;
       case 'playing':
-        this.renderPlayingHud();
         break;
     }
   }
@@ -381,75 +402,141 @@ export class SuperSnakeUI {
     panel.appendChild(back);
   }
 
-  private renderPlayingHud(): void {
-    this.ensureHud();
-    this.updateHudContent();
-  }
-
-  private ensureHud(): void {
-    if (this.hudPanel) {
+  private ensureHudBar(): void {
+    if (this.hudBar) {
       return;
     }
-    const panel = this.overlay.addPanel({ anchor: 'top-left', x: 16, y: 16 });
+    const panel = this.overlay.addPanel({ anchor: 'top-left' });
     panel.dataset.testid = 'super-snake-hud';
-    panel.style.pointerEvents = 'none';
-    panel.style.display = 'flex';
-    panel.style.flexDirection = 'column';
-    panel.style.gap = '4px';
-    panel.style.minWidth = '140px';
-    panel.style.padding = '10px 14px';
-    panel.style.borderRadius = '12px';
-    panel.style.border = '1px solid rgba(70, 92, 122, 0.7)';
-    panel.style.background = 'rgba(8, 13, 20, 0.82)';
-    panel.style.boxShadow = '0 12px 24px rgba(5, 9, 14, 0.35)';
-    panel.style.color = '#f4f9ff';
+    const s = panel.style;
+    s.pointerEvents = 'none';
+    s.position = 'absolute';
+    s.top = '24px';
+    s.left = '50%';
+    s.transform = 'translateX(-50%)';
+    s.width = 'min(960px, calc(100% - 48px))';
+    s.display = 'flex';
+    s.flexWrap = 'wrap';
+    s.alignItems = 'center';
+    s.justifyContent = 'space-between';
+    s.gap = '18px';
+    s.padding = '14px 20px';
+    s.borderRadius = '16px';
+    s.border = '1px solid rgba(98, 134, 178, 0.45)';
+    s.background = 'linear-gradient(155deg, rgba(8, 14, 24, 0.92), rgba(6, 10, 18, 0.88))';
+    s.boxShadow = '0 20px 40px rgba(4, 8, 16, 0.45)';
+    s.backdropFilter = 'blur(12px)';
     panel.style.fontFamily = FONT_STACK;
 
-    const title = document.createElement('div');
-    title.textContent = 'In-Game';
-    title.style.fontSize = '12px';
-    title.style.letterSpacing = '0.16em';
-    title.style.fontWeight = '600';
-    title.style.opacity = '0.65';
-    panel.appendChild(title);
+    const levelValue = this.createHudGroup(panel, 'Level');
+    const scoreValue = this.createHudGroup(panel, 'Score');
+    const comboValue = this.createHudGroup(panel, 'Combo');
+    const highScoreValue = this.createHudGroup(panel, 'High Score');
+    const powerUpValue = this.createHudGroup(panel, 'Power-Ups', true);
+    powerUpValue.style.display = 'flex';
+    powerUpValue.style.flexWrap = 'wrap';
+    powerUpValue.style.alignItems = 'center';
+    powerUpValue.style.gap = '8px';
 
-    const score = document.createElement('div');
-    score.style.fontSize = '20px';
-    score.style.fontWeight = '600';
-    score.style.lineHeight = '1.2';
-    panel.appendChild(score);
+    this.hudBar = panel;
+    this.hudLevelLabel = levelValue;
+    this.hudScoreLabel = scoreValue;
+    this.hudComboLabel = comboValue;
+    this.hudHighScoreLabel = highScoreValue;
+    this.hudPowerUpsContainer = powerUpValue;
+  }
 
-    const combo = document.createElement('div');
-    combo.style.fontSize = '14px';
-    combo.style.opacity = '0.85';
-    combo.style.fontWeight = '500';
-    panel.appendChild(combo);
+  private createHudGroup(panel: HTMLDivElement, label: string, expandable = false): HTMLDivElement {
+    const group = document.createElement('div');
+    group.style.display = 'flex';
+    group.style.flexDirection = 'column';
+    group.style.gap = '4px';
+    group.style.minWidth = expandable ? '220px' : '120px';
+    group.style.flex = expandable ? '1 1 260px' : '0 0 auto';
 
-    this.hudPanel = panel;
-    this.hudScoreLabel = score;
-    this.hudComboLabel = combo;
+    const labelEl = document.createElement('div');
+    labelEl.textContent = label.toUpperCase();
+    labelEl.style.fontSize = '11px';
+    labelEl.style.letterSpacing = '0.18em';
+    labelEl.style.fontWeight = '600';
+    labelEl.style.opacity = '0.65';
+
+    const valueEl = document.createElement('div');
+    valueEl.style.fontSize = '20px';
+    valueEl.style.fontWeight = '600';
+    valueEl.style.lineHeight = '1.2';
+    valueEl.style.color = '#f5fbff';
+
+    group.appendChild(labelEl);
+    group.appendChild(valueEl);
+    panel.appendChild(group);
+    return valueEl;
   }
 
   private updateHudContent(): void {
-    if (!this.hudPanel) {
+    if (!this.hudBar || !this.hudState) {
       return;
     }
-    const stats = this.hudStats ?? { score: 0, combo: 0 };
+    if (this.hudLevelLabel) {
+      this.hudLevelLabel.textContent = this.hudState.levelName;
+    }
     if (this.hudScoreLabel) {
-      this.hudScoreLabel.textContent = `Score ${stats.score}`;
+      this.hudScoreLabel.textContent = this.hudState.score.toLocaleString();
     }
     if (this.hudComboLabel) {
-      this.hudComboLabel.textContent = `Combo x${stats.combo}`;
+      this.hudComboLabel.textContent = `x${this.hudState.combo}`;
+    }
+    if (this.hudHighScoreLabel) {
+      this.hudHighScoreLabel.textContent = this.hudState.highScore.toLocaleString();
+    }
+    if (this.hudPowerUpsContainer) {
+      this.hudPowerUpsContainer.innerHTML = '';
+      if (this.hudState.activePowerUps.length === 0) {
+        const empty = document.createElement('span');
+        empty.textContent = 'None';
+        empty.style.opacity = '0.6';
+        empty.style.fontSize = '14px';
+        this.hudPowerUpsContainer.appendChild(empty);
+      } else {
+        this.hudState.activePowerUps.forEach((info) => {
+          const chip = document.createElement('div');
+          chip.textContent = `${info.icon} ${info.label} · ${this.formatPowerUpCountdown(info.remainingMs)}`;
+          chip.style.padding = '6px 10px';
+          chip.style.borderRadius = '999px';
+          chip.style.background = 'rgba(35, 52, 74, 0.65)';
+          chip.style.border = '1px solid rgba(105, 155, 225, 0.35)';
+          chip.style.fontSize = '13px';
+          chip.style.fontWeight = '500';
+          chip.style.letterSpacing = '0.01em';
+          chip.style.color = '#e5f1ff';
+          this.hudPowerUpsContainer!.appendChild(chip);
+        });
+      }
     }
   }
 
-  private destroyHud(): void {
-    if (this.hudPanel) {
-      this.hudPanel.remove();
+  private formatPowerUpCountdown(ms: number): string {
+    const seconds = Math.max(0, ms / 1000);
+    if (seconds >= 10) {
+      return `${Math.floor(seconds)}s`;
     }
-    this.hudPanel = null;
+    return `${seconds.toFixed(1)}s`;
+  }
+
+  private destroyHud(): void {
+    if (this.hudBar) {
+      this.hudBar.remove();
+    }
+    this.resetHudRefs();
+  }
+
+  private resetHudRefs(): void {
+    this.hudBar = null;
+    this.hudLevelLabel = null;
     this.hudScoreLabel = null;
     this.hudComboLabel = null;
+    this.hudHighScoreLabel = null;
+    this.hudPowerUpsContainer = null;
   }
 
   private createButton(label: string, onClick: () => void): HTMLButtonElement {

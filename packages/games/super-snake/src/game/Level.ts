@@ -1,5 +1,5 @@
 import type { GridPosition } from './Grid';
-import {
+import type {
   HazardInstance,
   LevelConfigComponent,
   LevelDefinition,
@@ -30,15 +30,18 @@ export function initializeLevelState(
   const definition = resolveLevel(config, levelId);
   if (!definition) {
     state.levelId = 'default';
+    state.levelName = 'Unknown';
     state.obstacles = [];
     state.obstacleSet = new Set<string>();
     state.hazardDefinitions = {};
     state.hazards = [];
     state.nextHazardId = 1;
+    state.hazardsDisabledUntil = -Infinity;
     return;
   }
 
   state.levelId = definition.id;
+  state.levelName = definition.name;
   state.theme = { ...definition.theme };
   state.obstacles = definition.obstacles.map((cell) => clonePosition(cell));
   state.obstacleSet = new Set<string>();
@@ -57,6 +60,7 @@ export function initializeLevelState(
     createHazardInstance(hazard, index, now)
   );
   state.nextHazardId = state.hazards.length + 1;
+  state.hazardsDisabledUntil = -Infinity;
 }
 
 function createHazardInstance(

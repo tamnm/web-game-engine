@@ -173,7 +173,7 @@ export const FoodState: ComponentDefinition<FoodStateComponent> = {
 
 export type SnakeGameMode = 'classic' | 'timed' | 'endless' | 'challenge';
 
-export type PowerUpType = 'slow-mo' | 'ghost' | 'magnet' | 'double-score';
+export type PowerUpType = 'slow-mo' | 'ghost' | 'magnet' | 'double-score' | 'shockwave';
 
 export interface PowerUpEffectConfig {
   /** Multiplies the movement interval when slow-mo is active. >1 slows the snake. */
@@ -184,6 +184,8 @@ export interface PowerUpEffectConfig {
   scoreMultiplier?: number;
   /** Manhattan distance range for magnetised food spawns. */
   magnetRange?: number;
+  /** Temporarily disables hazards for the given duration (milliseconds). */
+  hazardDisableMs?: number;
 }
 
 export interface PowerUpDefinition {
@@ -270,6 +272,17 @@ export const PowerUpConfig: ComponentDefinition<PowerUpConfigComponent> = {
         tint: [0.95, 0.3, 0.6, 1],
         icon: '✨',
       },
+      {
+        id: 'shockwave',
+        type: 'shockwave',
+        weight: 2,
+        durationMs: 5000,
+        effect: {
+          hazardDisableMs: 6000,
+        },
+        tint: [0.55, 0.9, 0.95, 1],
+        icon: '⚡',
+      },
     ],
     maxActive: 1,
     spawnIntervalMs: 12000,
@@ -303,6 +316,7 @@ export interface LevelThemeDefinition {
   snakeHeadColor?: string;
   obstacleColor: string;
   hazardColor: string;
+  hazardIcon?: string;
   overlayColor?: string;
 }
 
@@ -355,6 +369,7 @@ export const LevelConfig: ComponentDefinition<LevelConfigComponent> = {
       snakeHeadColor: '#c6ffe0',
       obstacleColor: '#1b2f3c',
       hazardColor: '#f26c6c',
+      hazardIcon: '✴️',
       overlayColor: 'rgba(36, 23, 58, 0.2)',
     };
 
@@ -375,18 +390,21 @@ export const LevelConfig: ComponentDefinition<LevelConfigComponent> = {
 
 export interface LevelStateComponent {
   levelId: string;
+  levelName: string;
   theme: LevelThemeDefinition;
   obstacles: LevelObstacle[];
   obstacleSet: Set<string>;
   hazardDefinitions: Record<string, LevelHazardDefinition>;
   hazards: HazardInstance[];
   nextHazardId: number;
+  hazardsDisabledUntil: number;
 }
 
 export const LevelState: ComponentDefinition<LevelStateComponent> = {
   name: 'super-snake.levelState',
   defaults: () => ({
     levelId: 'default',
+    levelName: 'Unknown',
     theme: {
       id: 'default',
       backgroundColor: '#051622',
@@ -395,6 +413,7 @@ export const LevelState: ComponentDefinition<LevelStateComponent> = {
       snakeHeadColor: '#a2ffd9',
       obstacleColor: '#234052',
       hazardColor: '#f25f5c',
+      hazardIcon: '✴️',
       overlayColor: undefined,
     },
     obstacles: [],
@@ -402,5 +421,6 @@ export const LevelState: ComponentDefinition<LevelStateComponent> = {
     hazardDefinitions: {},
     hazards: [],
     nextHazardId: 1,
+    hazardsDisabledUntil: -Infinity,
   }),
 };

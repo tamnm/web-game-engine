@@ -25,15 +25,21 @@ export function createHazardSystem(): System {
           continue;
         }
 
-        stepHazards(level, elapsed);
+        const hazardsDisabled = level.hazardsDisabledUntil > elapsed;
 
-        const hazardHit = level.hazards.some((hazard) =>
-          snake.segments.some(
-            (segment) => segment.x === hazard.position.x && segment.y === hazard.position.y
-          )
-        );
-        if (hazardHit) {
-          snake.alive = false;
+        if (!hazardsDisabled) {
+          stepHazards(level, elapsed);
+        }
+
+        if (!hazardsDisabled) {
+          const hazardHit = level.hazards.some((hazard) =>
+            snake.segments.some(
+              (segment) => segment.x === hazard.position.x && segment.y === hazard.position.y
+            )
+          );
+          if (hazardHit) {
+            snake.alive = false;
+          }
         }
       }
     },
