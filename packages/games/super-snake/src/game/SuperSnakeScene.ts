@@ -456,7 +456,6 @@ export class SuperSnakeScene extends Scene {
       level: level
         ? {
             id: level.levelId,
-            name: level.levelName,
             obstacles: level.obstacles.map((cell) => ({ x: cell.x, y: cell.y })),
             hazards: level.hazards.map((hazard) => ({
               id: hazard.id,
