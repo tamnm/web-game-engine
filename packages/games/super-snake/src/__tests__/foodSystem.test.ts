@@ -5,6 +5,7 @@ import {
   FoodConfigComponent,
   FoodState,
   FoodStateComponent,
+  PowerUpState,
   Snake,
   SnakeComponent,
   SnakeGameState,
@@ -80,5 +81,54 @@ describe('Food system', () => {
     expect(state.maxCombo).toBe(state.comboCount);
     expect(state.score).toBeGreaterThan(firstFood.score);
     expect(foodState.items).toHaveLength(1);
+  });
+
+  it('pulls nearby food toward the snake when magnet is active', () => {
+    const world = new World();
+    const entity = spawnSuperSnake(world, {
+      gridWidth: 8,
+      gridHeight: 8,
+      foodMaxActive: 1,
+    });
+
+    const snake = world.getComponent(entity, Snake) as SnakeComponent;
+    snake.segments = [
+      { x: 4, y: 4 },
+      { x: 4, y: 5 },
+      { x: 4, y: 6 },
+    ];
+
+    const foodState = world.getComponent(entity, FoodState) as FoodStateComponent;
+    foodState.items = [
+      {
+        id: 1,
+        type: 'apple',
+        x: 1,
+        y: 4,
+        spawnedAt: 0,
+        growth: 1,
+        score: 10,
+        comboBonus: 0,
+        tint: [1, 0, 0, 1],
+      },
+    ];
+
+    const powerUps = world.getComponent(entity, PowerUpState);
+    powerUps?.items.splice(0, powerUps.items.length);
+    powerUps?.active.splice(0, powerUps.active.length);
+    powerUps?.active.push({
+      id: 99,
+      type: 'magnet',
+      expiresAt: 10_000,
+      effect: { magnetRange: 5 },
+    });
+
+    const state = world.getComponent(entity, SnakeGameState)!;
+    state.score = 0;
+
+    const foodSystem = createFoodSystem();
+    foodSystem.execute({ world, delta: 0, elapsed: 1_000 });
+
+    expect(foodState.items[0]).toMatchObject({ x: 2, y: 4 });
   });
 });

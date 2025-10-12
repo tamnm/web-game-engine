@@ -1,6 +1,6 @@
 import type { ComponentDefinition } from '@web-game-engine/core';
 import type { GridPosition } from './Grid';
-import { generateAuroraObstacles } from './Level';
+import { DEFAULT_LEVEL_PRESETS } from './LevelPresets';
 
 export type GridMode = 'wrap' | 'solid';
 
@@ -14,7 +14,7 @@ export interface GridComponent {
 export const Grid: ComponentDefinition<GridComponent> = {
   name: 'super-snake.grid',
   defaults: () => ({
-    width: 16,
+    width: 20,
     height: 16,
     cellSize: 32,
     mode: 'wrap',
@@ -318,6 +318,8 @@ export interface LevelThemeDefinition {
   hazardColor: string;
   hazardIcon?: string;
   overlayColor?: string;
+  cardAccent?: string;
+  cardBackground?: string;
 }
 
 export interface LevelObstacle {
@@ -330,6 +332,9 @@ export interface LevelHazardDefinition {
   path: GridPosition[];
   stepIntervalMs: number;
   pingPong?: boolean;
+  pulseDurationMs?: number;
+  idleDurationMs?: number;
+  label?: string;
 }
 
 export interface LevelDefinition {
@@ -347,6 +352,8 @@ export interface HazardInstance {
   pathIndex: number;
   direction: 1 | -1;
   nextMoveAt: number;
+  active: boolean;
+  nextPulseToggleAt: number;
 }
 
 export interface LevelConfigComponent {
@@ -357,33 +364,21 @@ export interface LevelConfigComponent {
 export const LevelConfig: ComponentDefinition<LevelConfigComponent> = {
   name: 'super-snake.levelConfig',
   defaults: () => {
-    const gridWidth = 16;
-    const gridHeight = 16;
-    const { obstacles, hazards } = generateAuroraObstacles(gridWidth, gridHeight, 'aurora');
-
-    const theme: LevelThemeDefinition = {
-      id: 'aurora',
-      backgroundColor: '#041924',
-      gridLineColor: 'rgba(255, 255, 255, 0.06)',
-      snakeBodyColor: '#74f7b4',
-      snakeHeadColor: '#c6ffe0',
-      obstacleColor: '#1b2f3c',
-      hazardColor: '#f26c6c',
-      hazardIcon: '✴️',
-      overlayColor: 'rgba(36, 23, 58, 0.2)',
-    };
+    const presets = DEFAULT_LEVEL_PRESETS;
+    const levels = presets.map((preset) => ({
+      id: preset.definition.id,
+      name: preset.definition.name,
+      theme: { ...preset.definition.theme },
+      obstacles: preset.definition.obstacles.map((cell) => ({ ...cell })),
+      hazards: preset.definition.hazards.map((hazard) => ({
+        ...hazard,
+        path: hazard.path.map((cell) => ({ ...cell })),
+      })),
+    }));
 
     return {
-      levels: [
-        {
-          id: 'aurora-garden',
-          name: 'Aurora Garden',
-          theme,
-          obstacles,
-          hazards,
-        },
-      ],
-      defaultLevelId: 'aurora-garden',
+      levels,
+      defaultLevelId: presets[0]?.definition.id ?? 'aurora-garden',
     };
   },
 };

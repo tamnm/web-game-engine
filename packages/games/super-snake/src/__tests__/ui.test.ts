@@ -10,7 +10,6 @@ describe('SuperSnakeUI', () => {
     const startSpy = vi.fn();
     ui.on('start', startSpy);
 
-    ui.setState('mode-select');
     const startButton = Array.from(container.querySelectorAll('button')).find((btn) =>
       btn.textContent?.includes('Classic')
     );
@@ -25,8 +24,7 @@ describe('SuperSnakeUI', () => {
   it('shows coming soon message for unavailable modes', () => {
     const container = document.createElement('div');
     document.body.appendChild(container);
-    const ui = new SuperSnakeUI({ container });
-    ui.setState('mode-select');
+    const ui = new SuperSnakeUI({ container, availableModes: ['classic'] });
 
     const timedButton = Array.from(container.querySelectorAll('button')).find((btn) =>
       btn.textContent?.includes('Timed')
@@ -34,7 +32,7 @@ describe('SuperSnakeUI', () => {
     expect(timedButton).toBeTruthy();
     timedButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 
-    expect(container.textContent).toContain('Timed mode is coming soon');
+    expect(container.textContent).toContain('Timed · Coming Soon');
     ui.dispose();
     document.body.innerHTML = '';
   });

@@ -4,6 +4,7 @@ export * from './Grid';
 export * from './Snake';
 export * from './Food';
 export * from './Level';
+export * from './LevelPresets';
 export * from './PowerUps';
 export * from './systems/SnakeMovementSystem';
 export * from './systems/HazardSystem';

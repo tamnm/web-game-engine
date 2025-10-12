@@ -54,7 +54,7 @@ export interface SuperSnakeOptions {
 export function spawnSuperSnake(world: World, options: SuperSnakeOptions = {}): number {
   const grid: GridComponent = {
     ...Grid.defaults!(),
-    width: options.gridWidth ?? 16,
+    width: options.gridWidth ?? 20,
     height: options.gridHeight ?? 16,
     cellSize: options.cellSize ?? 32,
     mode: options.mode ?? 'wrap',

@@ -13,6 +13,47 @@ function clonePosition(position: GridPosition): GridPosition {
   return { x: position.x, y: position.y };
 }
 
+function findNearestFreeCell(
+  start: GridPosition,
+  occupied: Set<string>,
+  bounds: { width: number; height: number },
+  avoid: Set<string> = new Set<string>()
+): GridPosition | null {
+  const visited = new Set<string>();
+  const queue: GridPosition[] = [clonePosition(start)];
+  const deltas: GridPosition[] = [
+    { x: 1, y: 0 },
+    { x: -1, y: 0 },
+    { x: 0, y: 1 },
+    { x: 0, y: -1 },
+  ];
+
+  while (queue.length > 0) {
+    const node = queue.shift()!;
+    const key = positionKey(node);
+    if (visited.has(key)) {
+      continue;
+    }
+    visited.add(key);
+
+    const withinBounds =
+      node.x >= 0 && node.y >= 0 && node.x < bounds.width && node.y < bounds.height;
+    if (withinBounds && !occupied.has(key) && !avoid.has(key)) {
+      return node;
+    }
+
+    deltas.forEach((delta) => {
+      const next = { x: node.x + delta.x, y: node.y + delta.y };
+      const nextKey = positionKey(next);
+      if (!visited.has(nextKey)) {
+        queue.push(next);
+      }
+    });
+  }
+
+  return null;
+}
+
 export function resolveLevel(
   config: LevelConfigComponent,
   levelId?: string
@@ -70,6 +111,9 @@ function createHazardInstance(
 ): HazardInstance {
   const origin = definition.path[0] ?? { x: 0, y: 0 };
   const start = clonePosition(origin);
+  const pulseDuration = definition.pulseDurationMs ?? 0;
+  const idleDuration = definition.idleDurationMs ?? 0;
+  const hasPulse = pulseDuration > 0 && idleDuration > 0;
   return {
     id: index + 1,
     definitionId: definition.id,
@@ -77,6 +121,8 @@ function createHazardInstance(
     pathIndex: 0,
     direction: 1,
     nextMoveAt: now + definition.stepIntervalMs,
+    active: true,
+    nextPulseToggleAt: hasPulse ? now + pulseDuration : Number.POSITIVE_INFINITY,
   };
 }
 
@@ -106,12 +152,36 @@ export function getHazardAtPosition(
 
 export function stepHazards(level: LevelStateComponent, elapsed: number): void {
   level.hazards.forEach((hazard) => {
-    if (hazard.nextMoveAt > elapsed) {
-      return;
-    }
     const definition = level.hazardDefinitions[hazard.definitionId];
     if (!definition) {
       hazard.nextMoveAt = elapsed + 1000;
+      return;
+    }
+    const pulseDuration = definition.pulseDurationMs ?? 0;
+    const idleDuration = definition.idleDurationMs ?? 0;
+    const hasPulse = pulseDuration > 0 && idleDuration > 0;
+
+    if (hasPulse) {
+      const activeDuration = Math.max(1, pulseDuration);
+      const idlePhaseDuration = Math.max(1, idleDuration);
+      while (elapsed >= hazard.nextPulseToggleAt) {
+        if (hazard.active) {
+          hazard.active = false;
+          hazard.nextPulseToggleAt += idlePhaseDuration;
+        } else {
+          hazard.active = true;
+          hazard.nextPulseToggleAt += activeDuration;
+        }
+        if (!Number.isFinite(hazard.nextPulseToggleAt)) {
+          break;
+        }
+      }
+    } else {
+      hazard.active = true;
+      hazard.nextPulseToggleAt = Number.POSITIVE_INFINITY;
+    }
+
+    if (hazard.nextMoveAt > elapsed) {
       return;
     }
     if (definition.path.length === 0) {
@@ -181,9 +251,9 @@ function generateObstacleClusters(
   height: number,
   rng: Rng
 ): { obstacles: GridPosition[]; obstacleSet: Set<string> } {
-  const maxClusters = 4;
+  const maxClusters = 3;
   const obstacles = new Set<string>();
-  const attemptsPerCluster = 24;
+  const attemptsPerCluster = 18;
   const reservedRadius = 2;
   let clusters = 0;
 
@@ -238,7 +308,8 @@ function generateSweepHazard(
   width: number,
   height: number,
   obstacleSet: Set<string>,
-  rng: Rng
+  rng: Rng,
+  label?: string
 ): LevelHazardDefinition | null {
   const attempts = 12;
   for (let attempt = 0; attempt < attempts; attempt += 1) {
@@ -252,7 +323,13 @@ function generateSweepHazard(
         }
       }
       if (path.length > 1) {
-        return { id, path, stepIntervalMs: randomInt(rng, 520, 660), pingPong: true };
+        return {
+          id,
+          path,
+          stepIntervalMs: randomInt(rng, 520, 660),
+          pingPong: true,
+          label,
+        };
       }
     } else {
       const x = randomInt(rng, 2, width - 3);
@@ -264,20 +341,34 @@ function generateSweepHazard(
         }
       }
       if (path.length > 1) {
-        return { id, path, stepIntervalMs: randomInt(rng, 560, 700), pingPong: true };
+        return {
+          id,
+          path,
+          stepIntervalMs: randomInt(rng, 560, 700),
+          pingPong: true,
+          label,
+        };
       }
     }
   }
   return null;
 }
 
-export function generateAuroraObstacles(
+export function generateAuroraLayout(
   width: number,
   height: number,
   seed: string
 ): { obstacles: GridPosition[]; hazards: LevelHazardDefinition[] } {
   const rng = createDeterministicRng(seed);
-  const { obstacles, obstacleSet } = generateObstacleClusters(width, height, rng);
+  const { obstacleSet } = generateObstacleClusters(width, height, rng);
+
+  ensureSpawnClear(obstacleSet, width, height);
+  const spawnKey = positionKey({
+    x: Math.floor(width / 2),
+    y: Math.floor(height / 2),
+  });
+  const hazardObstacles = new Set<string>(obstacleSet);
+  hazardObstacles.add(spawnKey);
 
   const hazards: LevelHazardDefinition[] = [];
   const horizontal = generateSweepHazard(
@@ -285,12 +376,292 @@ export function generateAuroraObstacles(
     'horizontal',
     width,
     height,
-    obstacleSet,
-    rng
+    hazardObstacles,
+    rng,
+    'Glacier Drift'
   );
   if (horizontal) hazards.push(horizontal);
-  const vertical = generateSweepHazard('v-sweeper', 'vertical', width, height, obstacleSet, rng);
+  const vertical = generateSweepHazard(
+    'v-sweeper',
+    'vertical',
+    width,
+    height,
+    hazardObstacles,
+    rng,
+    'Aurora Beam'
+  );
   if (vertical) hazards.push(vertical);
 
-  return { obstacles, hazards };
+  return { obstacles: positionsFromSet(obstacleSet), hazards };
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
+}
+
+function addRect(
+  target: Set<string>,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  bounds: { width: number; height: number }
+): void {
+  for (let dy = 0; dy < height; dy += 1) {
+    for (let dx = 0; dx < width; dx += 1) {
+      const px = x + dx;
+      const py = y + dy;
+      if (px < 0 || py < 0 || px >= bounds.width || py >= bounds.height) continue;
+      target.add(`${px},${py}`);
+    }
+  }
+}
+
+function positionsFromSet(set: Set<string>): GridPosition[] {
+  return Array.from(set).map((key) => {
+    const [x, y] = key.split(',').map((value) => Number.parseInt(value, 10));
+    return { x, y };
+  });
+}
+
+function ensureSpawnClear(target: Set<string>, width: number, height: number): void {
+  const spawnX = Math.floor(width / 2);
+  const spawnY = Math.floor(height / 2);
+  target.delete(`${spawnX},${spawnY}`);
+}
+
+function createPulseHazard(
+  id: string,
+  position: GridPosition,
+  pulseDurationMs: number,
+  idleDurationMs: number,
+  label: string | undefined,
+  occupied: Set<string>,
+  bounds: { width: number; height: number },
+  avoid: Set<string>
+): LevelHazardDefinition | null {
+  const target = findNearestFreeCell(position, occupied, bounds, avoid);
+  if (!target) {
+    return null;
+  }
+  occupied.add(positionKey(target));
+  return {
+    id,
+    path: [clonePosition(target)],
+    stepIntervalMs: pulseDurationMs + idleDurationMs,
+    pingPong: false,
+    pulseDurationMs,
+    idleDurationMs,
+    label,
+  };
+}
+
+function buildPerimeterPath(
+  minX: number,
+  minY: number,
+  maxX: number,
+  maxY: number
+): GridPosition[] {
+  const path: GridPosition[] = [];
+  for (let x = minX; x <= maxX; x += 1) path.push({ x, y: minY });
+  for (let y = minY + 1; y <= maxY; y += 1) path.push({ x: maxX, y });
+  for (let x = maxX - 1; x >= minX; x -= 1) path.push({ x, y: maxY });
+  for (let y = maxY - 1; y > minY; y -= 1) path.push({ x: minX, y });
+  const seen = new Set<string>();
+  return path.filter((cell) => {
+    const key = positionKey(cell);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function createOrbitHazard(
+  id: string,
+  center: GridPosition,
+  radius: number,
+  bounds: { width: number; height: number },
+  obstacleSet: Set<string>,
+  stepIntervalMs: number,
+  label?: string
+): LevelHazardDefinition | null {
+  const minX = clamp(center.x - radius, 1, bounds.width - 2);
+  const maxX = clamp(center.x + radius, 1, bounds.width - 2);
+  const minY = clamp(center.y - radius, 1, bounds.height - 2);
+  const maxY = clamp(center.y + radius, 1, bounds.height - 2);
+  if (minX >= maxX || minY >= maxY) return null;
+
+  const perimeter = buildPerimeterPath(minX, minY, maxX, maxY).filter(
+    (cell) => !obstacleSet.has(positionKey(cell))
+  );
+  if (perimeter.length <= 1) {
+    return null;
+  }
+  return {
+    id,
+    path: perimeter.map((cell) => clonePosition(cell)),
+    stepIntervalMs,
+    pingPong: false,
+    label,
+  };
+}
+
+export function generateEmberLayout(
+  width: number,
+  height: number
+): { obstacles: GridPosition[]; hazards: LevelHazardDefinition[] } {
+  const bounds = { width, height };
+  const dunes = new Set<string>();
+
+  addRect(dunes, 2, 2, 4, 2, bounds);
+  addRect(dunes, width - 8, 3, 4, 2, bounds);
+  addRect(dunes, 3, height - 5, 3, 2, bounds);
+  addRect(dunes, width - 7, height - 6, 3, 2, bounds);
+
+  const rng = createDeterministicRng(`ember-${width}x${height}`);
+  const extraPatches = 2;
+  for (let i = 0; i < extraPatches; i += 1) {
+    const w = randomInt(rng, 2, 3);
+    const h = randomInt(rng, 1, 2);
+    const x = randomInt(rng, 1, width - w - 2);
+    const y = randomInt(rng, 2, height - h - 2);
+    addRect(dunes, x, y, w, h, bounds);
+  }
+
+  ensureSpawnClear(dunes, width, height);
+
+  const occupied = new Set<string>(dunes);
+  const spawn = { x: Math.floor(width / 2), y: Math.floor(height / 2) };
+  const spawnKey = positionKey(spawn);
+  occupied.add(spawnKey);
+  const hazardAvoid = new Set<string>([spawnKey]);
+  const hazards: LevelHazardDefinition[] = [
+    createPulseHazard(
+      'ember-vent-north',
+      { x: Math.floor(width * 0.3), y: Math.floor(height * 0.32) },
+      900,
+      1100,
+      'Lava Vent',
+      occupied,
+      bounds,
+      hazardAvoid
+    ),
+    createPulseHazard(
+      'ember-vent-east',
+      { x: Math.floor(width * 0.65), y: Math.floor(height * 0.58) },
+      1200,
+      800,
+      'Lava Vent',
+      occupied,
+      bounds,
+      hazardAvoid
+    ),
+    createPulseHazard(
+      'ember-vent-south',
+      { x: Math.floor(width * 0.45), y: Math.floor(height * 0.78) },
+      1000,
+      950,
+      'Lava Vent',
+      occupied,
+      bounds,
+      hazardAvoid
+    ),
+  ].filter((hazard): hazard is LevelHazardDefinition => hazard !== null);
+
+  const sweeper = generateSweepHazard(
+    'ember-sandstorm',
+    'horizontal',
+    width,
+    height,
+    occupied,
+    rng,
+    'Sandstorm Sweep'
+  );
+  if (sweeper) {
+    sweeper.stepIntervalMs = Math.max(420, sweeper.stepIntervalMs - 80);
+    hazards.push(sweeper);
+  }
+
+  return {
+    obstacles: positionsFromSet(dunes),
+    hazards,
+  };
+}
+
+export function generateMidnightLayout(
+  width: number,
+  height: number
+): { obstacles: GridPosition[]; hazards: LevelHazardDefinition[] } {
+  const bounds = { width, height };
+  const stalls = new Set<string>();
+
+  addRect(stalls, 2, 2, 3, 3, bounds);
+  addRect(stalls, width - 5, 2, 3, 3, bounds);
+  addRect(stalls, 2, height - 5, 3, 3, bounds);
+  addRect(stalls, width - 5, height - 5, 3, 3, bounds);
+  addRect(stalls, Math.floor(width / 2) - 5, 4, 5, 1, bounds);
+  addRect(stalls, Math.floor(width / 2) + 1, 4, 5, 1, bounds);
+  addRect(stalls, Math.floor(width / 2) - 5, height - 5, 5, 1, bounds);
+  addRect(stalls, Math.floor(width / 2) + 1, height - 5, 5, 1, bounds);
+
+  ensureSpawnClear(stalls, width, height);
+  const spawn = { x: Math.floor(width / 2), y: Math.floor(height / 2) };
+  const spawnKey = positionKey(spawn);
+  const hazardObstacles = new Set<string>(stalls);
+  hazardObstacles.add(spawnKey);
+
+  const hazards: LevelHazardDefinition[] = [];
+  const droneA = createOrbitHazard(
+    'neon-drone-west',
+    { x: 4, y: Math.floor(height / 2) },
+    3,
+    bounds,
+    hazardObstacles,
+    360,
+    'Courier Drone'
+  );
+  if (droneA) hazards.push(droneA);
+  const droneB = createOrbitHazard(
+    'neon-drone-east',
+    { x: width - 5, y: Math.floor(height / 2) },
+    3,
+    bounds,
+    hazardObstacles,
+    380,
+    'Courier Drone'
+  );
+  if (droneB) hazards.push(droneB);
+
+  const plazaOrbit = createOrbitHazard(
+    'neon-plaza-orbit',
+    { x: Math.floor(width / 2), y: Math.floor(height / 2) },
+    4,
+    bounds,
+    hazardObstacles,
+    440,
+    'Lantern Orbit'
+  );
+  if (plazaOrbit) hazards.push(plazaOrbit);
+
+  const rng = createDeterministicRng(`midnight-${width}x${height}`);
+  const lane = generateSweepHazard(
+    'neon-lane',
+    'vertical',
+    width,
+    height,
+    hazardObstacles,
+    rng,
+    'Blink Sweep'
+  );
+  if (lane) {
+    lane.stepIntervalMs = Math.max(360, lane.stepIntervalMs - 60);
+    hazards.push(lane);
+  }
+
+  ensureSpawnClear(stalls, width, height);
+
+  return {
+    obstacles: positionsFromSet(stalls),
+    hazards,
+  };
 }

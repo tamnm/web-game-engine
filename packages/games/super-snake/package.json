@@ -13,6 +13,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "test": "vitest",
-    "lint": "eslint ./src"
+    "lint": "eslint ./src",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
   }
 }

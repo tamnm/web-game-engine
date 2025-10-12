@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { World } from '@web-game-engine/core';
 import { bootSuperSnake } from '../main';
-import { SuperSnakeScene } from '../game';
+import { SuperSnakeScene, SnakeGameState } from '../game';
+import { DEFAULT_LEVEL_PRESETS } from '../game/LevelPresets';
 
 interface StubbedCanvasContext {
   canvas: HTMLCanvasElement;
@@ -160,5 +162,80 @@ describe('Super Snake integration', () => {
     await runtime.stop();
     const cancel = globalThis.cancelAnimationFrame as ReturnType<typeof vi.fn>;
     expect(cancel).toHaveBeenCalledTimes(1);
+  });
+
+  it('levels up when score thresholds are reached and carries score forward', () => {
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+
+    const canvas = document.createElement('canvas');
+    container.appendChild(canvas);
+    const context = createStubContext(canvas);
+    vi.spyOn(canvas, 'getContext').mockReturnValue(context);
+
+    const world = new World();
+    const scene = new SuperSnakeScene(world, { context, ui: { container } });
+    scene.onEnter();
+    scene.startGame('classic');
+
+    const internals = scene as unknown as {
+      snakeEntity: number | null;
+      phase: string;
+      applyPendingLevelUp(): void;
+      ui: { getState(): string };
+    };
+
+    const firstThreshold = DEFAULT_LEVEL_PRESETS[0].progression.nextScoreThreshold;
+    expect(firstThreshold).not.toBeNull();
+    const snakeEntity = internals.snakeEntity;
+    expect(snakeEntity).not.toBeNull();
+    const state = world.getComponent(snakeEntity!, SnakeGameState);
+    expect(state).toBeDefined();
+    if (!state || firstThreshold === null) {
+      throw new Error('Level progression prerequisites missing');
+    }
+
+    state.score = firstThreshold - 10;
+    scene.update(0);
+    expect(internals.phase).toBe('playing');
+
+    state.score = firstThreshold;
+    scene.update(0);
+    expect(internals.phase).toBe('level-up');
+    expect(internals.ui.getState()).toBe('level-up');
+
+    internals.applyPendingLevelUp();
+    expect(internals.phase).toBe('playing');
+    let debug = scene.getDebugState();
+    expect(debug?.level?.id).toBe('ember-dunes');
+    expect(debug?.state.score).toBe(firstThreshold);
+
+    const secondThreshold = DEFAULT_LEVEL_PRESETS[1].progression.nextScoreThreshold;
+    expect(secondThreshold).not.toBeNull();
+    if (secondThreshold === null) {
+      throw new Error('Second level threshold missing');
+    }
+    const secondEntity = internals.snakeEntity;
+    expect(secondEntity).not.toBeNull();
+    const secondState = world.getComponent(secondEntity!, SnakeGameState);
+    expect(secondState).toBeDefined();
+    if (!secondState) {
+      throw new Error('Unable to access state for second level');
+    }
+
+    secondState.score = secondThreshold - 10;
+    scene.update(0);
+    expect(internals.phase).toBe('playing');
+
+    secondState.score = secondThreshold;
+    scene.update(0);
+    expect(internals.ui.getState()).toBe('level-up');
+
+    internals.applyPendingLevelUp();
+    debug = scene.getDebugState();
+    expect(debug?.level?.id).toBe('midnight-market');
+    expect(debug?.state.score).toBe(secondThreshold);
+
+    scene.onExit();
   });
 });

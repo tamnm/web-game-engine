@@ -51,7 +51,40 @@ export function createFoodSystem(): System {
 
         const random = config.random ?? Math.random;
 
+        const blockedCells = collectBlockedCells(level);
+
         if (snake.alive && snake.segments.length > 0) {
+          const magnetRange = getMagnetRange(powerUps, elapsed);
+          if (magnetRange !== null && magnetRange > 0 && food.items.length > 0) {
+            const head = getHead(snake);
+            const occupied = new Set<string>();
+            snake.segments.forEach((segment) => occupied.add(`${segment.x},${segment.y}`));
+            blockedCells.forEach((cell) => occupied.add(`${cell.x},${cell.y}`));
+            food.items.forEach((item) => occupied.add(`${item.x},${item.y}`));
+
+            food.items.forEach((item) => {
+              const key = `${item.x},${item.y}`;
+              occupied.delete(key);
+              const dx = Math.sign(head.x - item.x);
+              const dy = Math.sign(head.y - item.y);
+              const distance = Math.abs(head.x - item.x) + Math.abs(head.y - item.y);
+              if (distance > 0 && distance <= magnetRange) {
+                const target = {
+                  x: item.x + dx,
+                  y: item.y + dy,
+                };
+                const targetKey = `${target.x},${target.y}`;
+                const withinBounds =
+                  target.x >= 0 && target.y >= 0 && target.x < grid.width && target.y < grid.height;
+                if (withinBounds && !occupied.has(targetKey)) {
+                  item.x = target.x;
+                  item.y = target.y;
+                }
+              }
+              occupied.add(`${item.x},${item.y}`);
+            });
+          }
+
           const head = getHead(snake);
           const consumedIndex = food.items.findIndex(
             (item) => item.x === head.x && item.y === head.y
@@ -79,8 +112,7 @@ export function createFoodSystem(): System {
           food.items.length < config.maxActive &&
           elapsed - food.lastSpawnAt >= config.spawnIntervalMs
         ) {
-          const blocked = collectBlockedCells(level);
-          const available = computeAvailableCells(grid, snake, food, blocked);
+          const available = computeAvailableCells(grid, snake, food, blockedCells);
           if (available.length === 0) {
             break;
           }

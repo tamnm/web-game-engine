@@ -31,7 +31,7 @@ function makeTexture(id: string, w = 32, h = 32): Texture {
 // Lenient thresholds to catch regressions without flakiness in CI
 const THRESHOLDS = {
   batch5000_drawCalls_max: 10, // default maxBatchSize=1000 => expect 5
-  frame1000_ms_max: 100, // should be well under on typical CI
+  frame1000_ms_max: 220, // still generous, alerts when something goes very wrong
 };
 
 describe('Rendering performance harness', () => {

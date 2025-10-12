@@ -1,27 +1,30 @@
 import { UIOverlay } from '@web-game-engine/core';
 import type { SnakeGameMode } from '../components';
+import type { LevelPreview } from '../LevelPresets';
 import type { LeaderboardEntry } from './LeaderboardStorage';
 
 export type UIState =
   | 'main-menu'
-  | 'mode-select'
   | 'settings'
   | 'playing'
   | 'paused'
   | 'game-over'
   | 'leaderboard'
-  | 'replay-view';
+  | 'replay-view'
+  | 'level-up';
 
 export interface SuperSnakeUIEvents {
   start: { mode: SnakeGameMode };
   resume: void;
   restart: void;
   exitToMenu: void;
+  openModeSelect: void;
   openSettings: void;
   closeSettings: void;
   saveInitials: { initials: string };
   viewReplay: { entry: LeaderboardEntry };
   deleteEntry: { entry: LeaderboardEntry };
+  confirmLevelUp: void;
 }
 
 const DEFAULT_MODES: SnakeGameMode[] = ['classic', 'timed', 'endless', 'challenge'];
@@ -37,6 +40,15 @@ export interface SuperSnakeUIOptions {
   container?: HTMLElement;
   modes?: SnakeGameMode[];
   availableModes?: SnakeGameMode[];
+  levels?: LevelPreview[];
+  defaultLevelId?: string;
+}
+
+interface LevelUpContext {
+  currentLevel: LevelPreview;
+  nextLevel: LevelPreview;
+  score: number;
+  combo: number;
 }
 
 interface HudPowerUpInfo {
@@ -62,8 +74,8 @@ export class SuperSnakeUI {
   private leaderboard: LeaderboardEntry[] = [];
   private lastScore: ScoreSnapshot | null = null;
   private replayPreview: LeaderboardEntry | null = null;
+  private levelUpContext: LevelUpContext | null = null;
   private readonly listeners = new Map<keyof SuperSnakeUIEvents, Set<unknown>>();
-  private modeFeedback: string | null = null;
   private hudState: HudState | null = null;
   private hudBar: HTMLDivElement | null = null;
   private hudLevelLabel: HTMLDivElement | null = null;
@@ -100,9 +112,6 @@ export class SuperSnakeUI {
 
   setState(state: UIState): void {
     this.state = state;
-    if (state !== 'mode-select') {
-      this.modeFeedback = null;
-    }
     this.render();
   }
 
@@ -127,6 +136,13 @@ export class SuperSnakeUI {
   setReplayPreview(entry: LeaderboardEntry | null): void {
     this.replayPreview = entry;
     if (this.state === 'replay-view') {
+      this.render();
+    }
+  }
+
+  setLevelUpContext(context: LevelUpContext | null): void {
+    this.levelUpContext = context;
+    if (this.state === 'level-up') {
       this.render();
     }
   }
@@ -161,9 +177,6 @@ export class SuperSnakeUI {
       case 'main-menu':
         this.renderMainMenu();
         break;
-      case 'mode-select':
-        this.renderModeSelect();
-        break;
       case 'settings':
         this.renderSettings();
         break;
@@ -179,6 +192,9 @@ export class SuperSnakeUI {
       case 'replay-view':
         this.renderReplayView();
         break;
+      case 'level-up':
+        this.renderLevelUp();
+        break;
       case 'playing':
         break;
     }
@@ -188,41 +204,12 @@ export class SuperSnakeUI {
     const panel = this.overlay.addPanel({ anchor: 'center', title: 'Super Snake' });
     this.stylePanel(panel, 320);
 
-    const startBtn = this.createButton('Start', () => this.setState('mode-select'));
-    panel.appendChild(startBtn);
-
-    const leaderboardBtn = this.createButton('Leaderboard', () => this.setState('leaderboard'));
-    panel.appendChild(leaderboardBtn);
-
-    const settingsBtn = this.createButton('Settings', () => {
-      this.emit('openSettings', undefined);
-      this.setState('settings');
-    });
-    panel.appendChild(settingsBtn);
-  }
-
-  private renderModeSelect(): void {
-    const panel = this.overlay.addPanel({ anchor: 'center', title: 'Select Mode' });
-    this.stylePanel(panel, 360);
-
-    const info = document.createElement('p');
-    info.textContent = this.modeFeedback ?? 'Classic is ready to play. Other modes are on the way!';
-    info.style.margin = '0 0 12px 0';
-    info.style.opacity = '0.85';
-    info.style.fontSize = '15px';
-    info.style.color = '#dbe6ff';
-    info.style.fontFamily = FONT_STACK;
-    panel.appendChild(info);
-
     this.modes.forEach((mode) => {
       const available = this.availableModes.has(mode);
       const label = available ? this.formatMode(mode) : `${this.formatMode(mode)} · Coming Soon`;
       const btn = this.createButton(label, () => {
         if (available) {
           this.emit('start', { mode });
-        } else {
-          this.modeFeedback = `${this.formatMode(mode)} mode is coming soon.`;
-          this.render();
         }
       });
       if (!available) {
@@ -232,8 +219,15 @@ export class SuperSnakeUI {
       }
       panel.appendChild(btn);
     });
-    const back = this.createButton('Back', () => this.setState('main-menu'));
-    panel.appendChild(back);
+
+    const leaderboardBtn = this.createButton('Leaderboard', () => this.setState('leaderboard'));
+    panel.appendChild(leaderboardBtn);
+
+    const settingsBtn = this.createButton('Settings', () => {
+      this.emit('openSettings', undefined);
+      this.setState('settings');
+    });
+    panel.appendChild(settingsBtn);
   }
 
   private renderSettings(): void {
@@ -261,6 +255,11 @@ export class SuperSnakeUI {
     panel.appendChild(
       this.createButton('Restart', () => {
         this.emit('restart', undefined);
+      })
+    );
+    panel.appendChild(
+      this.createButton('Mode & Level Select', () => {
+        this.emit('openModeSelect', undefined);
       })
     );
     panel.appendChild(
@@ -319,6 +318,11 @@ export class SuperSnakeUI {
       this.emit('saveInitials', { initials });
     });
     panel.appendChild(saveBtn);
+
+    const modeSelectBtn = this.createButton('Mode & Level Select', () => {
+      this.emit('openModeSelect', undefined);
+    });
+    panel.appendChild(modeSelectBtn);
 
     const leaderboardBtn = this.createButton('View Leaderboard', () =>
       this.setState('leaderboard')
@@ -402,6 +406,53 @@ export class SuperSnakeUI {
     panel.appendChild(back);
   }
 
+  private renderLevelUp(): void {
+    const context = this.levelUpContext;
+    const title = context ? `Level Up — ${context.nextLevel.name}` : 'Level Up';
+    const panel = this.overlay.addPanel({ anchor: 'center', title });
+    this.stylePanel(panel, 420);
+
+    const cleared = document.createElement('p');
+    cleared.textContent = context ? `Cleared ${context.currentLevel.name}!` : 'Level complete!';
+    cleared.style.fontFamily = FONT_STACK;
+    cleared.style.fontSize = '16px';
+    cleared.style.margin = '0 0 8px 0';
+    panel.appendChild(cleared);
+
+    const summary = document.createElement('p');
+    summary.textContent = context
+      ? `Score ${context.score.toLocaleString()} · Combo x${context.combo}`
+      : 'Keep the streak going!';
+    summary.style.fontFamily = FONT_STACK;
+    summary.style.fontSize = '14px';
+    summary.style.opacity = '0.85';
+    summary.style.margin = '0 0 12px 0';
+    panel.appendChild(summary);
+
+    if (context) {
+      const preview = document.createElement('p');
+      preview.textContent = `${context.nextLevel.name}: ${context.nextLevel.description}`;
+      preview.style.fontFamily = FONT_STACK;
+      preview.style.fontSize = '14px';
+      preview.style.opacity = '0.8';
+      preview.style.margin = '0 0 16px 0';
+      panel.appendChild(preview);
+    }
+
+    const continueLabel = context ? `Continue to ${context.nextLevel.name}` : 'Continue';
+    panel.appendChild(
+      this.createButton(continueLabel, () => {
+        this.emit('confirmLevelUp', undefined);
+      })
+    );
+
+    panel.appendChild(
+      this.createButton('Mode & Level Select', () => {
+        this.emit('openModeSelect', undefined);
+      })
+    );
+  }
+
   private ensureHudBar(): void {
     if (this.hudBar) {
       return;
@@ -437,6 +488,8 @@ export class SuperSnakeUI {
     powerUpValue.style.flexWrap = 'wrap';
     powerUpValue.style.alignItems = 'center';
     powerUpValue.style.gap = '8px';
+    powerUpValue.style.minHeight = '32px';
+    powerUpValue.style.justifyContent = 'flex-start';
 
     this.hudBar = panel;
     this.hudLevelLabel = levelValue;
@@ -496,6 +549,7 @@ export class SuperSnakeUI {
         empty.textContent = 'None';
         empty.style.opacity = '0.6';
         empty.style.fontSize = '14px';
+        empty.style.minWidth = '120px';
         this.hudPowerUpsContainer.appendChild(empty);
       } else {
         this.hudState.activePowerUps.forEach((info) => {
@@ -509,6 +563,8 @@ export class SuperSnakeUI {
           chip.style.fontWeight = '500';
           chip.style.letterSpacing = '0.01em';
           chip.style.color = '#e5f1ff';
+          chip.style.whiteSpace = 'nowrap';
+          chip.style.minWidth = '140px';
           this.hudPowerUpsContainer!.appendChild(chip);
         });
       }

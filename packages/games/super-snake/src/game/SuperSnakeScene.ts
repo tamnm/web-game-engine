@@ -5,10 +5,14 @@ import {
   GridComponent,
   Snake,
   SnakeComponent,
+  SnakeMovement,
+  SnakeMovementComponent,
   SnakeGameState,
   SnakeGameStateComponent,
   SnakeSegment,
   SnakeGameMode,
+  FoodConfig,
+  FoodConfigComponent,
   PowerUpState,
   PowerUpStateComponent,
   PowerUpConfig,
@@ -26,6 +30,20 @@ import { SuperSnakeInput, SuperSnakeInputOptions } from './input';
 import { setNextDirection } from './Snake';
 import { SuperSnakeUI, SuperSnakeUIOptions } from './ui/SuperSnakeUI';
 import { LeaderboardStorage, LeaderboardEntry } from './ui/LeaderboardStorage';
+import { DEFAULT_LEVEL_PRESETS, LevelPreset } from './LevelPresets';
+
+function cloneLevelDefinition(definition: LevelPreset['definition']): LevelPreset['definition'] {
+  return {
+    id: definition.id,
+    name: definition.name,
+    theme: { ...definition.theme },
+    obstacles: definition.obstacles.map((cell) => ({ ...cell })),
+    hazards: definition.hazards.map((hazard) => ({
+      ...hazard,
+      path: hazard.path.map((cell) => ({ ...cell })),
+    })),
+  };
+}
 
 export interface SuperSnakeSceneOptions extends SuperSnakeOptions {
   context: CanvasRenderingContext2D;
@@ -36,6 +54,8 @@ export interface SuperSnakeSceneOptions extends SuperSnakeOptions {
     maxEntries?: number;
     storage?: Storage;
   };
+  levels?: LevelPreset[];
+  defaultLevelId?: string;
 }
 
 export class SuperSnakeScene extends Scene {
@@ -48,26 +68,59 @@ export class SuperSnakeScene extends Scene {
   private readonly input: SuperSnakeInput;
   private readonly ui: SuperSnakeUI;
   private readonly leaderboard: LeaderboardStorage;
+  private readonly levelPresets: LevelPreset[];
   private highScore = 0;
   private snakeEntity: number | null = null;
   private devicePixelRatio = 1;
-  private phase: 'menu' | 'playing' | 'paused' | 'game-over' = 'menu';
+  private phase: 'menu' | 'playing' | 'paused' | 'game-over' | 'level-up' = 'menu';
   private currentMode: SnakeGameMode = 'classic';
+  private currentLevelId: string;
+  private currentLevelIndex = 0;
+  private nextLevelScoreTarget: number | null = null;
+  private pendingLevelUp: {
+    index: number;
+    preset: LevelPreset;
+    preserved: {
+      score: number;
+      comboCount: number;
+      maxCombo: number;
+    };
+  } | null = null;
   private replayEvents: Array<{ time: number; direction: SnakeComponent['direction'] }> = [];
   private elapsedMs = 0;
   private lastScoreSnapshot: { mode: SnakeGameMode; score: number; combo: number } | null = null;
 
   constructor(
     world: World,
-    { context, input, ui, leaderboard, ...options }: SuperSnakeSceneOptions
+    { context, input, ui, leaderboard, levels, defaultLevelId, ...options }: SuperSnakeSceneOptions
   ) {
     super('super-snake.scene', world);
     this.context = context;
-    this.options = options;
+    this.levelPresets = levels ?? DEFAULT_LEVEL_PRESETS;
+    const derivedDefinitions =
+      options.levelDefinitions?.map(cloneLevelDefinition) ??
+      this.levelPresets.map((preset) => cloneLevelDefinition(preset.definition));
+    const fallbackLevelId =
+      derivedDefinitions[0]?.id ?? this.levelPresets[0]?.definition.id ?? 'aurora-garden';
+    const initialLevelId = options.levelId ?? defaultLevelId ?? fallbackLevelId;
+    this.currentLevelId = initialLevelId;
+    this.currentLevelIndex = this.findPresetIndex(initialLevelId);
+    const initialPreset = this.levelPresets[this.currentLevelIndex] ?? this.levelPresets[0];
+    this.nextLevelScoreTarget = initialPreset?.progression.nextScoreThreshold ?? null;
+    this.options = {
+      ...options,
+      levelDefinitions: derivedDefinitions,
+      levelId: initialLevelId,
+    };
     this.devicePixelRatio = (globalThis as { devicePixelRatio?: number }).devicePixelRatio ?? 1;
     this.input = new SuperSnakeInput(input);
     this.leaderboard = new LeaderboardStorage(leaderboard);
-    this.ui = new SuperSnakeUI({ container: context.canvas.parentElement ?? undefined, ...ui });
+    const uiOptions: SuperSnakeUIOptions = {
+      container: context.canvas.parentElement ?? undefined,
+      ...ui,
+    };
+    uiOptions.levels = undefined;
+    this.ui = new SuperSnakeUI(uiOptions);
     this.styleCanvas(context.canvas);
     this.ui.setState('main-menu');
     const initialEntries = this.leaderboard.load();
@@ -82,6 +135,19 @@ export class SuperSnakeScene extends Scene {
         this.resume();
       }
     });
+  }
+
+  private findPresetIndex(levelId: string): number {
+    const index = this.levelPresets.findIndex((preset) => preset.definition.id === levelId);
+    return index >= 0 ? index : 0;
+  }
+
+  private getPresetByIndex(index: number): LevelPreset {
+    return this.levelPresets[index] ?? this.levelPresets[0];
+  }
+
+  private updateNextLevelScoreTarget(preset: LevelPreset): void {
+    this.nextLevelScoreTarget = preset.progression.nextScoreThreshold;
   }
 
   override onEnter(): void {
@@ -111,7 +177,7 @@ export class SuperSnakeScene extends Scene {
     if (this.phase === 'menu' || this.phase === 'game-over') {
       return;
     }
-    if (this.phase === 'paused') {
+    if (this.phase === 'paused' || this.phase === 'level-up') {
       this.input.update();
       return;
     }
@@ -130,6 +196,7 @@ export class SuperSnakeScene extends Scene {
     this.elapsedMs += delta;
     this.world.step(delta);
     this.syncHudWithState();
+    this.checkLevelProgression();
     this.checkForGameOver();
   }
 
@@ -228,9 +295,10 @@ export class SuperSnakeScene extends Scene {
         const centerX = hazard.position.x * grid.cellSize + grid.cellSize / 2;
         const centerY = hazard.position.y * grid.cellSize + grid.cellSize / 2;
         const radius = grid.cellSize * 0.4 * pulse;
+        const dormant = hazard.active === false;
         ctx.beginPath();
         ctx.fillStyle = hazardColor;
-        ctx.globalAlpha = hazardsDisabled ? 0.25 : 0.8;
+        ctx.globalAlpha = hazardsDisabled || dormant ? 0.25 : 0.8;
         ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
         ctx.fill();
         if (hazardsDisabled) {
@@ -239,13 +307,19 @@ export class SuperSnakeScene extends Scene {
           ctx.setLineDash([4, 4]);
           ctx.stroke();
           ctx.setLineDash([]);
+        } else if (dormant) {
+          ctx.lineWidth = 2;
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
+          ctx.setLineDash([2, 4]);
+          ctx.stroke();
+          ctx.setLineDash([]);
         }
         ctx.globalAlpha = 1;
         const iconSize = Math.max(16, Math.floor(grid.cellSize * 0.6));
         ctx.font = `${iconSize}px "Noto Color Emoji", "Apple Color Emoji", "Segoe UI Emoji", system-ui`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillStyle = hazardsDisabled ? 'rgba(255, 255, 255, 0.6)' : '#ffffff';
+        ctx.fillStyle = hazardsDisabled || dormant ? 'rgba(255, 255, 255, 0.6)' : '#ffffff';
         ctx.fillText(hazardIcon, centerX, centerY);
       });
     }
@@ -500,18 +574,151 @@ export class SuperSnakeScene extends Scene {
     this.updateHud();
   }
 
-  startGame(mode: SnakeGameMode): void {
-    this.currentMode = mode;
+  private checkLevelProgression(): void {
+    if (this.phase !== 'playing' || this.snakeEntity === null) {
+      return;
+    }
+    if (this.pendingLevelUp || this.nextLevelScoreTarget === null) {
+      return;
+    }
+    const state = this.world.getComponent(this.snakeEntity, SnakeGameState) as
+      | SnakeGameStateComponent
+      | undefined;
+    if (!state) {
+      return;
+    }
+    if (state.score >= this.nextLevelScoreTarget) {
+      const nextIndex = this.currentLevelIndex + 1;
+      if (nextIndex < this.levelPresets.length) {
+        this.triggerLevelUp(nextIndex, state);
+      } else {
+        this.nextLevelScoreTarget = null;
+      }
+    }
+  }
+
+  private createRunForPreset(
+    preset: LevelPreset,
+    options: { preservedState?: { score: number; comboCount: number; maxCombo: number } } = {}
+  ): void {
     if (this.snakeEntity !== null && this.world.hasEntity(this.snakeEntity)) {
       this.world.destroyEntity(this.snakeEntity);
     }
-    this.snakeEntity = spawnSuperSnake(this.world, { ...this.options });
+    this.currentLevelId = preset.definition.id;
+    this.currentLevelIndex = this.findPresetIndex(this.currentLevelId);
+    const spawnOptions = { ...this.options, levelId: this.currentLevelId };
+    this.snakeEntity = spawnSuperSnake(this.world, spawnOptions);
+
+    const movement = this.world.getComponent(this.snakeEntity, SnakeMovement) as
+      | SnakeMovementComponent
+      | undefined;
+    if (movement) {
+      movement.moveIntervalMs = Math.max(
+        16,
+        Math.round(movement.moveIntervalMs * preset.progression.moveIntervalMultiplier)
+      );
+      movement.accumulatorMs = 0;
+    }
+
+    const foodConfig = this.world.getComponent(this.snakeEntity, FoodConfig) as
+      | FoodConfigComponent
+      | undefined;
+    if (foodConfig) {
+      foodConfig.spawnIntervalMs = Math.max(
+        250,
+        Math.round(foodConfig.spawnIntervalMs * preset.progression.foodSpawnIntervalMultiplier)
+      );
+    }
+
+    const powerUpConfig = this.world.getComponent(this.snakeEntity, PowerUpConfig) as
+      | PowerUpConfigComponent
+      | undefined;
+    if (powerUpConfig) {
+      powerUpConfig.spawnIntervalMs = Math.max(
+        1000,
+        Math.round(
+          powerUpConfig.spawnIntervalMs * preset.progression.powerUpSpawnIntervalMultiplier
+        )
+      );
+      powerUpConfig.initialDelayMs = Math.max(
+        0,
+        Math.round(powerUpConfig.initialDelayMs * preset.progression.powerUpInitialDelayMultiplier)
+      );
+    }
+
+    const state = this.world.getComponent(this.snakeEntity, SnakeGameState) as
+      | SnakeGameStateComponent
+      | undefined;
+    if (state) {
+      if (options.preservedState) {
+        state.score = options.preservedState.score;
+        state.comboCount = options.preservedState.comboCount;
+        state.maxCombo = Math.max(options.preservedState.maxCombo, state.maxCombo);
+      } else {
+        state.score = 0;
+        state.comboCount = 0;
+        state.maxCombo = 0;
+        state.lastConsumedAt = -Infinity;
+      }
+      this.highScore = Math.max(this.highScore, state.score);
+    }
+
+    this.updateNextLevelScoreTarget(preset);
+    this.pendingLevelUp = null;
     this.replayEvents = [];
     this.elapsedMs = 0;
     this.lastScoreSnapshot = null;
     this.ui.setLastScore(null);
     this.ui.setReplayPreview(null);
     this.updateHud();
+  }
+
+  private triggerLevelUp(nextIndex: number, state: SnakeGameStateComponent): void {
+    const nextPreset = this.getPresetByIndex(nextIndex);
+    const currentPreset = this.getPresetByIndex(this.currentLevelIndex);
+    this.pendingLevelUp = {
+      index: nextIndex,
+      preset: nextPreset,
+      preserved: {
+        score: state.score,
+        comboCount: state.comboCount,
+        maxCombo: state.maxCombo,
+      },
+    };
+    this.setPhase('level-up');
+    this.ui.setLevelUpContext({
+      currentLevel: currentPreset.preview,
+      nextLevel: nextPreset.preview,
+      score: state.score,
+      combo: state.comboCount,
+    });
+    this.ui.setState('level-up');
+  }
+
+  startGame(mode: SnakeGameMode): void {
+    this.currentMode = mode;
+    const presetIndex = this.currentLevelIndex;
+    const preset = this.getPresetByIndex(presetIndex);
+    this.currentLevelIndex = presetIndex;
+    this.pendingLevelUp = null;
+    this.ui.setLevelUpContext(null);
+    this.createRunForPreset(preset);
+    this.setPhase('playing');
+    this.ui.setState('playing');
+  }
+
+  private applyPendingLevelUp(): void {
+    if (!this.pendingLevelUp) {
+      if (this.phase === 'level-up') {
+        this.setPhase('playing');
+        this.ui.setState('playing');
+      }
+      return;
+    }
+    const { preset, preserved } = this.pendingLevelUp;
+    this.pendingLevelUp = null;
+    this.ui.setLevelUpContext(null);
+    this.createRunForPreset(preset, { preservedState: preserved });
     this.setPhase('playing');
     this.ui.setState('playing');
   }
@@ -574,10 +781,30 @@ export class SuperSnakeScene extends Scene {
     this.updateHud();
   }
 
+  private openModeSelect(): void {
+    if (this.snakeEntity !== null && this.world.hasEntity(this.snakeEntity)) {
+      this.world.destroyEntity(this.snakeEntity);
+    }
+    this.snakeEntity = null;
+    this.pendingLevelUp = null;
+    this.ui.setLevelUpContext(null);
+    const preset = this.getPresetByIndex(this.currentLevelIndex);
+    this.updateNextLevelScoreTarget(preset);
+    this.replayEvents = [];
+    this.elapsedMs = 0;
+    this.lastScoreSnapshot = null;
+    this.setPhase('menu');
+    this.ui.setLastScore(null);
+    this.ui.setReplayPreview(null);
+    this.ui.setState('main-menu');
+  }
+
   private registerUiEvents(): void {
     this.ui.on('start', ({ mode }) => this.startGame(mode));
     this.ui.on('resume', () => this.resume());
     this.ui.on('restart', () => this.restart());
+    this.ui.on('openModeSelect', () => this.openModeSelect());
+    this.ui.on('confirmLevelUp', () => this.applyPendingLevelUp());
     this.ui.on('exitToMenu', () => this.exitToMenu());
     this.ui.on('openSettings', () => {
       if (this.phase === 'playing') {

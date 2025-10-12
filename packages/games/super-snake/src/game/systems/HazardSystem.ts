@@ -34,7 +34,10 @@ export function createHazardSystem(): System {
         if (!hazardsDisabled) {
           const hazardHit = level.hazards.some((hazard) =>
             snake.segments.some(
-              (segment) => segment.x === hazard.position.x && segment.y === hazard.position.y
+              (segment) =>
+                hazard.active !== false &&
+                segment.x === hazard.position.x &&
+                segment.y === hazard.position.y
             )
           );
           if (hazardHit) {
