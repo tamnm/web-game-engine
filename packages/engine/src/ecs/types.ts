@@ -27,6 +27,8 @@ export interface SystemContext {
   world: World;
   delta: number;
   elapsed: number;
+  alpha?: number;
+  totalTime: number;
 }
 
 export interface System {

@@ -63,7 +63,7 @@ describe('Food system', () => {
     snake.segments[0].y = firstFood.y;
 
     const foodSystem = createFoodSystem();
-    foodSystem.execute({ world, delta: 0, elapsed: 0 });
+    foodSystem.execute({ world, delta: 0, elapsed: 0, totalTime: 0 });
 
     expect(state.score).toBe(firstFood.score);
     expect(state.comboCount).toBe(1);
@@ -75,7 +75,12 @@ describe('Food system', () => {
     // Consume the new food within the combo window.
     snake.segments[0].x = secondFood.x;
     snake.segments[0].y = secondFood.y;
-    foodSystem.execute({ world, delta: 0, elapsed: foodConfig.comboWindowMs / 2 });
+    foodSystem.execute({
+      world,
+      delta: 0,
+      elapsed: foodConfig.comboWindowMs / 2,
+      totalTime: foodConfig.comboWindowMs / 2,
+    });
 
     expect(state.comboCount).toBeGreaterThan(1);
     expect(state.maxCombo).toBe(state.comboCount);
@@ -127,7 +132,7 @@ describe('Food system', () => {
     state.score = 0;
 
     const foodSystem = createFoodSystem();
-    foodSystem.execute({ world, delta: 0, elapsed: 1_000 });
+    foodSystem.execute({ world, delta: 0, elapsed: 1_000, totalTime: 1_000 });
 
     expect(foodState.items[0]).toMatchObject({ x: 2, y: 4 });
   });

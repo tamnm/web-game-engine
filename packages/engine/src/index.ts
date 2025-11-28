@@ -1,5 +1,6 @@
 export * from './ecs';
 export * from './scene';
+export * from './loop';
 export * from './assets';
 export * from './input';
 export * from './audio';

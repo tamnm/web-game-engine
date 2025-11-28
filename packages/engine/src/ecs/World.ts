@@ -33,7 +33,7 @@ export class World implements IWorld {
   private readonly entities: Set<Entity> = new Set();
   private readonly stores: Map<string, ComponentStoreEntry> = new Map();
   private readonly systems: SystemRegistration[] = [];
-  private elapsed = 0;
+  private totalTime = 0;
 
   createEntity(): Entity {
     const entity = this.nextEntity++;
@@ -125,14 +125,33 @@ export class World implements IWorld {
   }
 
   step(delta: number): void {
-    this.elapsed += delta;
+    this.totalTime += delta;
     const context: SystemContext = {
       world: this,
       delta,
-      elapsed: this.elapsed,
+      elapsed: this.totalTime,
+      totalTime: this.totalTime,
+    };
+    const updateStages: SystemStage[] = ['init', 'preUpdate', 'update', 'postUpdate', 'cleanup'];
+    for (const { system } of this.systems) {
+      if (updateStages.includes(system.stage)) {
+        system.execute(context);
+      }
+    }
+  }
+
+  render(alpha: number): void {
+    const context: SystemContext = {
+      world: this,
+      delta: 0,
+      elapsed: this.totalTime,
+      totalTime: this.totalTime,
+      alpha,
     };
     for (const { system } of this.systems) {
-      system.execute(context);
+      if (system.stage === 'render') {
+        system.execute(context);
+      }
     }
   }
 
@@ -163,6 +182,6 @@ export class World implements IWorld {
     this.entities.clear();
     this.stores.clear();
     this.systems.length = 0;
-    this.elapsed = 0;
+    this.totalTime = 0;
   }
 }

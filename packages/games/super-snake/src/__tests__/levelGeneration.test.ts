@@ -89,12 +89,12 @@ describe('Hazard behaviours', () => {
     snake.segments[0].x = 3;
     snake.segments[0].y = 3;
 
-    hazardSystem.execute({ world, delta: 0, elapsed: 450 });
+    hazardSystem.execute({ world, delta: 0, elapsed: 450, totalTime: 450 });
     expect(snake.alive).toBe(true);
 
     // Advance past the idle window so the hazard reactivates.
     stepHazards(level, 1200);
-    hazardSystem.execute({ world, delta: 0, elapsed: 1200 });
+    hazardSystem.execute({ world, delta: 0, elapsed: 1200, totalTime: 1200 });
     expect(snake.alive).toBe(false);
   });
 });
