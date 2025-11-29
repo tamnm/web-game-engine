@@ -4,6 +4,8 @@ export interface SpriteDrawOptions {
   width?: number;
   height?: number;
   rotation?: number;
+  flipX?: boolean;
+  flipY?: boolean;
   tint?: [number, number, number, number];
   origin?: [number, number];
   parallax?: [number, number]; // (1,1)=world space; (0,0)=screen-space

@@ -1,16 +1,15 @@
-# SpriteDrawOptions
+# RecordedSpriteCommand
 
 Kind: interface
 
 ## Members
 
+- textureId
 - x
 - y
 - width
 - height
 - rotation
-- flipX
-- flipY
 - tint
 - origin
 - parallax

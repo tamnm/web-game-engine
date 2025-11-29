@@ -7,3 +7,5 @@ Kind: interface
 - world
 - delta
 - elapsed
+- alpha
+- totalTime

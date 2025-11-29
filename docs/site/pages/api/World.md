@@ -8,7 +8,7 @@ Kind: symbol
 - entities
 - stores
 - systems
-- elapsed
+- totalTime
 - createEntity — (): number
 - destroyEntity — (entity: number): void
 - hasEntity — (entity: number): boolean
@@ -22,6 +22,7 @@ Kind: symbol
 - registerSystem — (system: System): void
 - unregisterSystem — (systemId: string): void
 - step — (delta: number): void
+- render — (alpha: number): void
 - serialize — (): SerializedWorld
 - snapshot — (entity: number): WorldSnapshot
 - clear — (): void
