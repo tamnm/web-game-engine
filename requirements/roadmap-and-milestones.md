@@ -43,4 +43,5 @@ Milestones are sequential; each includes exit criteria tied to acceptance.
 ## M7 — Documentation + Release (Weeks 19–20)
 
 - Complete docs, tutorials, API reference; example gallery.
+- **TODO: Create engine playground/sandbox** - Interactive demo package showcasing engine features (animation, physics, particles, input) with demo selector UI. Allows developers to quickly try the engine in browser without building a full game. Should reuse existing demo classes (e.g., SpriteAnimationDemo) and include dev tools enabled.
 - Exit: Engine acceptance met; docs and samples published.
