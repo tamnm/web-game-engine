@@ -9,6 +9,8 @@ const repoRoot = join(__dirname, '..');
 const docsDir = join(repoRoot, 'docs');
 const snakeDist = join(repoRoot, 'packages', 'games', 'super-snake', 'dist');
 const snakeDocsDir = join(docsDir, 'super-snake');
+const playgroundDist = join(repoRoot, 'packages', 'playground', 'dist');
+const playgroundDocsDir = join(docsDir, 'playground');
 
 function run(command) {
   execSync(command, {
@@ -31,10 +33,18 @@ function main() {
   console.log('🛠  Building Super Snake for GitHub Pages…');
   run('npm run build --workspace @web-game-engine/super-snake');
 
+  console.log('🛠  Building Playground for GitHub Pages…');
+  run('npm run build --workspace @web-game-engine/playground');
+
   console.log('🧹  Refreshing docs/super-snake…');
   rmSync(snakeDocsDir, { recursive: true, force: true });
   ensureDir(docsDir);
   cpSync(snakeDist, snakeDocsDir, { recursive: true });
+
+  console.log('🧹  Refreshing docs/playground…');
+  rmSync(playgroundDocsDir, { recursive: true, force: true });
+  ensureDir(docsDir);
+  cpSync(playgroundDist, playgroundDocsDir, { recursive: true });
 
   console.log('✅  GitHub Pages assets ready in docs/');
 }

@@ -195,6 +195,8 @@ export class Renderer {
         this.drawSpriteCanvas(command);
       }
     }
+    // TODO: Implement WebGL2 rendering path for better performance
+    // Currently only Canvas 2D rendering is implemented
     this.stats.drawCalls += 1;
     this.stats.batches += 1;
     this.currentBatch = null;
@@ -220,26 +222,30 @@ export class Renderer {
     }
     ctx.globalAlpha = tint[3];
     ctx.globalCompositeOperation = baseComposite;
-    if (command.region) {
-      ctx.drawImage(
-        texture.source,
-        command.region.x,
-        command.region.y,
-        command.region.width,
-        command.region.height,
-        -command.width * origin[0] * zoom,
-        -command.height * origin[1] * zoom,
-        command.width * zoom,
-        command.height * zoom
-      );
-    } else {
-      ctx.drawImage(
-        texture.source,
-        -command.width * origin[0] * zoom,
-        -command.height * origin[1] * zoom,
-        command.width * zoom,
-        command.height * zoom
-      );
+    try {
+      if (command.region) {
+        ctx.drawImage(
+          texture.source,
+          command.region.x,
+          command.region.y,
+          command.region.width,
+          command.region.height,
+          -command.width * origin[0] * zoom,
+          -command.height * origin[1] * zoom,
+          command.width * zoom,
+          command.height * zoom
+        );
+      } else {
+        ctx.drawImage(
+          texture.source,
+          -command.width * origin[0] * zoom,
+          -command.height * origin[1] * zoom,
+          command.width * zoom,
+          command.height * zoom
+        );
+      }
+    } catch (error) {
+      console.error('Renderer: drawImage failed', error);
     }
     // Simple per-sprite color tint using multiply + destination-in masking
     const [tr, tg, tb] = tint;

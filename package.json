@@ -26,7 +26,8 @@
   },
   "workspaces": [
     "packages/*",
-    "packages/games/*"
+    "packages/games/*",
+    "packages/playground"
   ],
   "devDependencies": {
     "@typescript-eslint/eslint-plugin": "^7.8.0",

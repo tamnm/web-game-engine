@@ -5,6 +5,7 @@ A TypeScript-first 2D web game engine paired with three showcase titles (Super S
 ## Packages
 
 - `packages/engine` (`@web-game-engine/core`) — ECS-driven engine core with rendering, audio, input, animation, physics, asset pipeline, demo scene, and tests.
+- `packages/playground` (`@web-game-engine/playground`) — Interactive showcase of engine features with demos for animations, physics, particles, and input handling.
 - `packages/games/super-snake` — placeholder for the Super Snake showcase implementation.
 - `packages/games/tetris-advanced` — placeholder for the Advanced Tetris showcase.
 - `packages/games/flappy-like` — placeholder for the Flappy-style showcase.
@@ -47,7 +48,8 @@ Engine unit tests live in `packages/engine/src/__tests__`. Coverage includes ECS
 ## Docs
 
 - Static docs site in `docs/site` with a simple theme and sidebar.
-- GitHub Pages splash in `docs/` that links to built demo games (`npm run build:pages` syncs assets).
+- GitHub Pages splash in `docs/` that links to built demo games and playground (`npm run build:pages` syncs assets).
+- Live demos available at GitHub Pages: Super Snake game and Engine Playground with interactive feature demos.
 - API Reference is generated from TypeScript via `npm run docs:api` into `docs/site/pages/api`.
 - See `docs/README.md` for usage, versioning badge, and deployment tips.
 
