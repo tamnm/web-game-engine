@@ -56,6 +56,8 @@ export class Renderer {
   private postProcessHook: ((ctx: CanvasRenderingContext2D) => void) | null = null;
   private backend: RenderBackend = 'none';
   private frameStartMs = 0;
+  private tintCanvas: HTMLCanvasElement | null = null;
+  private tintContext: CanvasRenderingContext2D | null = null;
 
   constructor(options: RendererOptions = {}) {
     if (options.contextProvider) {
@@ -222,61 +224,155 @@ export class Renderer {
     }
     ctx.globalAlpha = tint[3];
     ctx.globalCompositeOperation = baseComposite;
+    const x = -command.width * origin[0] * zoom;
+    const y = -command.height * origin[1] * zoom;
+    const w = command.width * zoom;
+    const h = command.height * zoom;
     try {
-      if (command.region) {
-        ctx.drawImage(
-          texture.source,
-          command.region.x,
-          command.region.y,
-          command.region.width,
-          command.region.height,
-          -command.width * origin[0] * zoom,
-          -command.height * origin[1] * zoom,
-          command.width * zoom,
-          command.height * zoom
-        );
+      if (this.isIdentityRgbTint(tint)) {
+        if (command.region) {
+          ctx.drawImage(
+            texture.source,
+            command.region.x,
+            command.region.y,
+            command.region.width,
+            command.region.height,
+            x,
+            y,
+            w,
+            h
+          );
+        } else {
+          ctx.drawImage(texture.source, x, y, w, h);
+        }
       } else {
-        ctx.drawImage(
-          texture.source,
-          -command.width * origin[0] * zoom,
-          -command.height * origin[1] * zoom,
-          command.width * zoom,
-          command.height * zoom
-        );
+        this.drawTintedSpriteCanvas(ctx, texture.source, command, x, y, w, h, tint);
       }
     } catch (error) {
       console.error('Renderer: drawImage failed', error);
     }
-    // Simple per-sprite color tint using multiply + destination-in masking
-    const [tr, tg, tb] = tint;
-    if (tr !== 1 || tg !== 1 || tb !== 1) {
-      const x = -command.width * origin[0] * zoom;
-      const y = -command.height * origin[1] * zoom;
-      const w = command.width * zoom;
-      const h = command.height * zoom;
-      ctx.save();
-      ctx.globalCompositeOperation = 'multiply';
-      ctx.fillStyle = `rgb(${Math.round(tr * 255)}, ${Math.round(tg * 255)}, ${Math.round(tb * 255)})`;
-      ctx.fillRect(x, y, w, h);
-      ctx.globalCompositeOperation = 'destination-in';
-      if (command.region) {
-        ctx.drawImage(
-          texture.source,
-          command.region.x,
-          command.region.y,
-          command.region.width,
-          command.region.height,
-          x,
-          y,
-          w,
-          h
-        );
-      } else {
-        ctx.drawImage(texture.source, x, y, w, h);
-      }
-      ctx.restore();
+    ctx.restore();
+  }
+
+  private isIdentityRgbTint(tint: [number, number, number, number]): boolean {
+    return tint[0] === 1 && tint[1] === 1 && tint[2] === 1;
+  }
+
+  private drawTintedSpriteCanvas(
+    ctx: CanvasRenderingContext2D,
+    source: CanvasImageSource,
+    command: SpriteBatchCommand,
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    tint: [number, number, number, number]
+  ): void {
+    const tintCtx = this.getTintContext(Math.max(1, Math.ceil(w)), Math.max(1, Math.ceil(h)));
+    if (!tintCtx) {
+      this.drawTintedSpriteCanvasFallback(ctx, source, command, x, y, w, h, tint);
+      return;
+    }
+
+    tintCtx.setTransform(1, 0, 0, 1, 0, 0);
+    tintCtx.clearRect(0, 0, tintCtx.canvas.width, tintCtx.canvas.height);
+    if (command.region) {
+      tintCtx.drawImage(
+        source,
+        command.region.x,
+        command.region.y,
+        command.region.width,
+        command.region.height,
+        0,
+        0,
+        tintCtx.canvas.width,
+        tintCtx.canvas.height
+      );
+    } else {
+      tintCtx.drawImage(source, 0, 0, tintCtx.canvas.width, tintCtx.canvas.height);
+    }
+
+    tintCtx.globalCompositeOperation = 'source-atop';
+    tintCtx.fillStyle = `rgb(${Math.round(tint[0] * 255)}, ${Math.round(tint[1] * 255)}, ${Math.round(tint[2] * 255)})`;
+    tintCtx.fillRect(0, 0, tintCtx.canvas.width, tintCtx.canvas.height);
+    tintCtx.globalCompositeOperation = 'source-over';
+
+    ctx.drawImage(tintCtx.canvas, x, y, w, h);
+  }
+
+  private drawTintedSpriteCanvasFallback(
+    ctx: CanvasRenderingContext2D,
+    source: CanvasImageSource,
+    command: SpriteBatchCommand,
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    tint: [number, number, number, number]
+  ): void {
+    if (command.region) {
+      ctx.drawImage(
+        source,
+        command.region.x,
+        command.region.y,
+        command.region.width,
+        command.region.height,
+        x,
+        y,
+        w,
+        h
+      );
+    } else {
+      ctx.drawImage(source, x, y, w, h);
+    }
+
+    ctx.save();
+    ctx.globalCompositeOperation = 'multiply';
+    ctx.fillStyle = `rgb(${Math.round(tint[0] * 255)}, ${Math.round(tint[1] * 255)}, ${Math.round(tint[2] * 255)})`;
+    ctx.fillRect(x, y, w, h);
+    ctx.globalCompositeOperation = 'destination-in';
+    if (command.region) {
+      ctx.drawImage(
+        source,
+        command.region.x,
+        command.region.y,
+        command.region.width,
+        command.region.height,
+        x,
+        y,
+        w,
+        h
+      );
+    } else {
+      ctx.drawImage(source, x, y, w, h);
     }
     ctx.restore();
+  }
+
+  private getTintContext(width: number, height: number): CanvasRenderingContext2D | null {
+    if (typeof document === 'undefined') {
+      return null;
+    }
+    if (!this.tintCanvas) {
+      try {
+        this.tintCanvas = document.createElement('canvas');
+        this.tintContext = this.tintCanvas.getContext('2d');
+      } catch {
+        this.tintCanvas = null;
+        this.tintContext = null;
+        return null;
+      }
+    }
+    if (!this.tintCanvas || !this.tintContext) {
+      return null;
+    }
+    if (this.tintCanvas.width !== width) {
+      this.tintCanvas.width = width;
+    }
+    if (this.tintCanvas.height !== height) {
+      this.tintCanvas.height = height;
+    }
+    return this.tintContext;
   }
 
   private isWebGLContext(ctx: RenderContext): ctx is WebGL2RenderingContext {
