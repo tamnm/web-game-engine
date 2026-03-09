@@ -103,8 +103,8 @@ export function createFoodSystem(): System {
             const scoreBoost = powerUps ? getScoreMultiplier(powerUps, elapsed) : 1;
             state.score += item.score * multiplier * scoreBoost;
 
-            // Allow immediate respawn if capacity remains.
-            food.lastSpawnAt = elapsed - config.spawnIntervalMs;
+            // Start the respawn cooldown from the pickup time.
+            food.lastSpawnAt = elapsed;
           }
         }
 

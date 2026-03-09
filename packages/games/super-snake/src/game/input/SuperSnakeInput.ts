@@ -37,6 +37,15 @@ const DEFAULT_BINDINGS: Record<ControlAction, ActionBinding[]> = {
   ],
 };
 
+export function getDefaultBindings(): Record<ControlAction, ActionBinding[]> {
+  return Object.fromEntries(
+    Object.entries(DEFAULT_BINDINGS).map(([action, bindings]) => [
+      action,
+      bindings.map((binding) => ({ ...binding })),
+    ])
+  ) as Record<ControlAction, ActionBinding[]>;
+}
+
 const PREVENT_DEFAULT_KEYS = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space']);
 
 interface PointerSnapshot {
@@ -147,6 +156,15 @@ export class SuperSnakeInput {
 
   rebind(action: ControlAction, bindings: ActionBinding[]): void {
     this.manager.rebind(action, bindings);
+  }
+
+  resetBindings(): void {
+    (Object.keys(DEFAULT_BINDINGS) as ControlAction[]).forEach((action) => {
+      this.manager.rebind(
+        action,
+        DEFAULT_BINDINGS[action].map((binding) => ({ ...binding }))
+      );
+    });
   }
 
   onPause(listener: () => void): () => void {

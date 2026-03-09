@@ -13,14 +13,23 @@ This document provides a comprehensive list of specs needed to complete the engi
 
 **In Progress:**
 
+- M4: Super Snake (implemented, still needs final acceptance/polish)
 - M7: Documentation & Release (partial)
 
 **Remaining:**
 
-- M4: Super Snake (partial - core implemented, needs polish)
 - M5: Advanced Tetris (placeholder only)
 - M6: Flappy-like (placeholder only)
-- Engine gaps and enhancements
+- Release hardening and acceptance sign-off
+
+**Verification Snapshot (March 9, 2026):**
+
+- `npm run typecheck` passes
+- `npm run test -- --run` passes
+- `packages/playground` is implemented
+- `packages/games/super-snake` is implemented with tests
+- `packages/games/tetris-advanced` is still a bootstrap placeholder
+- `packages/games/flappy-like` is still a bootstrap placeholder
 
 ---
 
@@ -28,41 +37,41 @@ This document provides a comprehensive list of specs needed to complete the engi
 
 The specs are organized by priority and dependencies. Follow this sequence for optimal development flow:
 
-### Phase 1: Engine Completion (Critical Gaps)
+### Phase 1: Current Priority
 
-1. Game Loop & Time Management
-2. Sprite Frame Animation
-3. Text Rendering System
-4. Advanced Audio Features
+1. Tetris Core Game Logic
+2. Tetris SRS Rotation System
+3. Tetris Scoring & Progression
+4. Tetris UI & Menus
+5. Tetris Audio & Polish
 
-### Phase 2: Super Snake Polish
+### Phase 2: Super Snake Acceptance Gap Closure
 
-5. Super Snake Replay System
-6. Super Snake Visual Polish
-7. Super Snake Audio Integration
-8. Super Snake Accessibility
+6. Super Snake Replay System
+7. Super Snake Visual Polish
+8. Super Snake Audio Integration
+9. Super Snake Accessibility
 
-### Phase 3: Tetris Implementation
+### Phase 3: Flappy Implementation
 
-9. Tetris Core Game Logic
-10. Tetris SRS Rotation System
-11. Tetris Scoring & Progression
-12. Tetris UI & Menus
-13. Tetris Audio & Polish
+10. Flappy Core Physics
+11. Flappy Procedural Generation
+12. Flappy UI & Progression
+13. Flappy Audio & Polish
 
-### Phase 4: Flappy Implementation
+### Phase 4: Release Hardening
 
-14. Flappy Core Physics
-15. Flappy Procedural Generation
-16. Flappy UI & Progression
-17. Flappy Audio & Polish
+14. Advanced Audio Features
+15. API Documentation
+16. Tutorial Content
+17. Example Projects
+18. Release Preparation
 
-### Phase 5: Documentation & Release
+### Phase 5: Optional Engine Enhancements
 
-18. API Documentation
-19. Tutorial Content
-20. Example Projects
-21. Release Preparation
+19. Game Loop & Time Management formalization
+20. Sprite Frame Animation enhancements
+21. Text Rendering follow-up work
 
 ---
 
@@ -72,7 +81,7 @@ The specs are organized by priority and dependencies. Follow this sequence for o
 
 **Priority**: Critical  
 **Dependencies**: None  
-**Status**: Partially implemented (needs formalization)
+**Status**: Implemented; only formalization/follow-up work may remain
 
 **Scope**: Implement a fixed timestep game loop with interpolation, time scaling, pause/resume, and frame-independent timing. This is foundational for deterministic gameplay and replay systems.
 
@@ -102,7 +111,7 @@ Reference: ENG-ECS-002 (system scheduling), requirements/engine/architecture.md 
 
 **Priority**: High  
 **Dependencies**: Asset Manager (completed)  
-**Status**: Not implemented
+**Status**: Implemented
 
 **Scope**: Implement sprite sheet frame animation with play/pause/loop controls, animation events, and integration with the ECS system.
 
@@ -138,7 +147,7 @@ Reference: ENG-ANM-001, requirements/engine/functional-requirements.md
 
 **Priority**: High  
 **Dependencies**: Renderer (completed)  
-**Status**: Not implemented
+**Status**: Implemented
 
 **Scope**: Implement text rendering with bitmap fonts and dynamic text layout, including wrapping, alignment, and styling.
 
@@ -749,7 +758,7 @@ Reference: FLP-AUD-001, FLP-PRS-001, FLP-PRS-002, requirements/showcase/flappy-b
 
 **Priority**: High  
 **Dependencies**: None  
-**Status**: Partial (API reference generated, needs examples)
+**Status**: Partial (API reference generated; examples and final coverage validation remain)
 
 **Scope**: Complete API documentation with examples, guides, and best practices.
 
@@ -790,7 +799,7 @@ Reference: ENG-DOC-001, requirements/engine/documentation-requirements.md
 
 **Priority**: Medium  
 **Dependencies**: API Documentation (Spec #18)  
-**Status**: Not implemented
+**Status**: Partial (tutorial/docs pages exist, but acceptance-level coverage is not complete)
 
 **Scope**: Create step-by-step tutorials for common game development tasks.
 
@@ -832,7 +841,7 @@ Reference: ENG-DOC-001, requirements/engine/documentation-requirements.md
 
 **Priority**: Medium  
 **Dependencies**: API Documentation (Spec #18)  
-**Status**: Not implemented
+**Status**: Partial (engine playground and Super Snake demo exist; broader example gallery is still incomplete)
 
 **Scope**: Create example projects demonstrating engine features and patterns.
 
@@ -935,13 +944,13 @@ Reference: ENF-DX-002, requirements/roadmap-and-milestones.md (M7)
 
 **Estimated Timeline**:
 
-- Phase 1 (Engine): 2-3 weeks
-- Phase 2 (Super Snake): 1-2 weeks
-- Phase 3 (Tetris): 3-4 weeks
-- Phase 4 (Flappy): 2-3 weeks
-- Phase 5 (Documentation): 1-2 weeks
+- Phase 1 (Tetris): 3-4 weeks
+- Phase 2 (Super Snake acceptance/polish): 1-2 weeks
+- Phase 3 (Flappy): 2-3 weeks
+- Phase 4 (Release hardening): 1-2 weeks
+- Phase 5 (Optional engine follow-up): variable
 
-**Total**: 9-14 weeks to complete all specs
+**Total**: 7-11 weeks for the remaining committed product scope, plus optional engine follow-up
 
 ---
 

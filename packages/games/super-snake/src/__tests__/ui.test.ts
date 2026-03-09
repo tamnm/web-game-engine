@@ -21,18 +21,16 @@ describe('SuperSnakeUI', () => {
     document.body.innerHTML = '';
   });
 
-  it('shows coming soon message for unavailable modes', () => {
+  it('renders all core modes as playable options', () => {
     const container = document.createElement('div');
     document.body.appendChild(container);
-    const ui = new SuperSnakeUI({ container, availableModes: ['classic'] });
+    const ui = new SuperSnakeUI({ container });
 
     const timedButton = Array.from(container.querySelectorAll('button')).find((btn) =>
       btn.textContent?.includes('Timed')
     );
     expect(timedButton).toBeTruthy();
-    timedButton?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-
-    expect(container.textContent).toContain('Timed · Coming Soon');
+    expect(timedButton?.textContent).toContain('60 second score attack');
     ui.dispose();
     document.body.innerHTML = '';
   });

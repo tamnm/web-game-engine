@@ -2,6 +2,24 @@
 
 Milestones are sequential; each includes exit criteria tied to acceptance.
 
+## Progress Snapshot (verified March 9, 2026)
+
+- M0: Complete. Repository scaffolding, lint/format setup, CI workflows, and ADRs are present.
+- M1: Complete. The engine package contains ECS, scenes, assets, input, audio, animation, physics, storage, UI, and tests.
+- M2: Complete. Rendering, batching, cameras, viewport handling, fallback behavior, dev overlay, and performance tests are implemented.
+- M3: Complete. Plugin host, example plugin coverage, particles, save/load, and UI overlay are in place.
+- M4: In progress. `super-snake` is implemented with game systems, UI, leaderboard persistence, replay data capture, and test coverage, but the full SNA-\* acceptance checklist is not yet explicitly signed off in the repo.
+- M5: Not started. `tetris-advanced` is still a bootstrap placeholder.
+- M6: Not started. `flappy-like` is still a bootstrap placeholder.
+- M7: In progress. Docs site, generated API reference, GitHub Pages build, and the engine playground are implemented; release hardening and final acceptance evidence are still missing.
+
+## Current Verification Notes
+
+- `npm run typecheck`: passes.
+- `npm run test -- --run`: passes (39 files, 214 tests).
+- The old M7 playground TODO is stale. `packages/playground` exists and is built into `docs/playground`.
+- Super Snake is the only showcase with meaningful game implementation today.
+
 ## M0 — Foundations (Weeks 1–2)
 
 - Project scaffolding, coding standards, lint/format, CI skeleton.
@@ -43,5 +61,13 @@ Milestones are sequential; each includes exit criteria tied to acceptance.
 ## M7 — Documentation + Release (Weeks 19–20)
 
 - Complete docs, tutorials, API reference; example gallery.
-- **TODO: Create engine playground/sandbox** - Interactive demo package showcasing engine features (animation, physics, particles, input) with demo selector UI. Allows developers to quickly try the engine in browser without building a full game. Should reuse existing demo classes (e.g., SpriteAnimationDemo) and include dev tools enabled.
+- Engine playground/sandbox is complete in `packages/playground` and published into `docs/playground`.
+- Remaining work:
+  - Finish showcase coverage so the example gallery includes all three target games.
+  - Run and document final acceptance checks against engine and showcase requirements.
+  - Add release artifacts such as changelog/versioning workflow and package publishing path if public release is intended.
 - Exit: Engine acceptance met; docs and samples published.
+
+## Recommended Next Move
+
+Focus next on M5, not more engine polish. The highest-leverage move is to implement Advanced Tetris first because its acceptance criteria are crisp and testable: 7-bag generation, SRS rotation, scoring, hold/queue behavior, replay determinism, and persisted DAS/ARR settings. Finishing Tetris closes the largest gap between the current repo state and the stated product scope while reusing the now-stable engine foundation.

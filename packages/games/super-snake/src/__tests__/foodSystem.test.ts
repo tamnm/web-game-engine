@@ -46,6 +46,7 @@ describe('Food system', () => {
       gridWidth: 6,
       gridHeight: 4,
       foodMaxActive: 1,
+      foodSpawnIntervalMs: 50,
       random,
     });
 
@@ -68,24 +69,43 @@ describe('Food system', () => {
     expect(state.score).toBe(firstFood.score);
     expect(state.comboCount).toBe(1);
     expect(snake.pendingGrowth).toBe(firstFood.growth);
+    expect(foodState.items).toHaveLength(0);
+
+    foodSystem.execute({
+      world,
+      delta: 0,
+      elapsed: foodConfig.spawnIntervalMs - 1,
+      totalTime: foodConfig.spawnIntervalMs - 1,
+    });
+
+    expect(foodState.items).toHaveLength(0);
+    expect(state.comboCount).toBe(1);
+    expect(state.maxCombo).toBe(1);
+    expect(state.score).toBe(firstFood.score);
+
+    foodSystem.execute({
+      world,
+      delta: 0,
+      elapsed: foodConfig.spawnIntervalMs,
+      totalTime: foodConfig.spawnIntervalMs,
+    });
+
     expect(foodState.items).toHaveLength(1);
     const secondFood = foodState.items[0];
     expect(secondFood.type).toBe('starfruit');
 
-    // Consume the new food within the combo window.
     snake.segments[0].x = secondFood.x;
     snake.segments[0].y = secondFood.y;
     foodSystem.execute({
       world,
       delta: 0,
-      elapsed: foodConfig.comboWindowMs / 2,
-      totalTime: foodConfig.comboWindowMs / 2,
+      elapsed: foodConfig.spawnIntervalMs + foodConfig.comboWindowMs / 4,
+      totalTime: foodConfig.spawnIntervalMs + foodConfig.comboWindowMs / 4,
     });
 
     expect(state.comboCount).toBeGreaterThan(1);
     expect(state.maxCombo).toBe(state.comboCount);
     expect(state.score).toBeGreaterThan(firstFood.score);
-    expect(foodState.items).toHaveLength(1);
   });
 
   it('pulls nearby food toward the snake when magnet is active', () => {

@@ -6,6 +6,7 @@ import {
   SnakeDirection,
   SnakeMovement,
   SnakeMovementComponent,
+  interpolateAxis,
   spawnSuperSnake,
   createSnakeMovementSystem,
 } from '../game';
@@ -108,5 +109,10 @@ describe('Super Snake movement system', () => {
     stepWorld(world, 100);
 
     expect(snake.alive).toBe(false);
+  });
+
+  it('interpolates wrap movement across the nearest edge', () => {
+    expect(interpolateAxis(4, 0, 5, 'wrap', 0.5)).toBeCloseTo(4.5);
+    expect(interpolateAxis(0, 4, 5, 'wrap', 0.5)).toBeCloseTo(4.5);
   });
 });

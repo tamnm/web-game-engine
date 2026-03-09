@@ -1,58 +1,55 @@
-# TODO - Future Improvements
+# TODO - Current Priorities
 
-## Engine Playground/Sandbox
+## 1. Advanced Tetris (M5)
+
+**Priority:** High  
+**Status:** Not started  
+**Why now:** This is the largest product gap after the engine/playground work and has the clearest acceptance target.
+
+### Minimum scope for the next iteration
+
+- Implement a playable core loop in `packages/games/tetris-advanced`.
+- Add 7-bag piece generation, hold, next queue, gravity, lock delay, soft/hard drop.
+- Implement SRS rotation and cover it with focused tests.
+- Add scoring for singles/doubles/triples/tetrises, combos, back-to-back, and T-spins.
+- Persist configurable DAS/ARR/soft drop settings.
+
+### Exit signal
+
+- The package is no longer a bootstrap placeholder.
+- Core gameplay is playable locally and backed by automated tests for rotation, scoring, and determinism.
+
+## 2. Flappy-like (M6)
 
 **Priority:** Medium  
-**Effort:** ~2-4 hours  
-**Milestone:** M7 (Documentation + Release)
+**Status:** Not started  
+**Why later:** It depends less on deep rules than Tetris, so it is a better follow-up once the second showcase pattern is established.
 
-### Goal
+### Target scope
 
-Create an interactive playground package that allows developers to quickly try out engine features in the browser without building a full game.
+- Playable flap/obstacle loop with restart under 500 ms.
+- Deterministic daily seed mode.
+- Local leaderboard and replay persistence.
+- Accessibility toggles and one-button input coverage.
 
-### What to Build
+## 3. Release Hardening (M7)
 
-```
-packages/playground/
-├── index.html
-├── src/
-│   ├── main.ts                    # Entry point with demo selector
-│   ├── demos/
-│   │   ├── AnimationDemo.ts       # Reuse SpriteAnimationDemo
-│   │   ├── PhysicsDemo.ts         # Simple collision demo
-│   │   ├── ParticlesDemo.ts       # Particle effects
-│   │   └── InputDemo.ts           # Keyboard/mouse/gamepad
-│   └── ui/
-│       └── DemoSelector.ts        # Sidebar to switch demos
-├── package.json                   # Copy from super-snake
-└── vite.config.ts
-```
+**Priority:** Medium  
+**Status:** In progress  
+**What is already done:** Docs site, API generation, Pages deployment workflow, and engine playground.
 
-### Key Features
+### Remaining work
 
-- Sidebar UI to select different demos
-- Each demo showcases a specific engine feature
-- Dev tools enabled (AnimationDebugPanel, DevOverlay)
-- Simple graphics (colored shapes) - no asset dependencies
-- Well-commented code explaining engine usage
-- `npm run dev` to start immediately
+- Record acceptance status against engine and showcase requirement docs.
+- Decide and implement versioning/changelog flow.
+- Add publish/release workflow if the engine package is meant to ship externally.
+- Expand Pages/example gallery once Tetris and Flappy-like exist.
 
-### Implementation Notes
+## Verification Snapshot (March 9, 2026)
 
-- Copy package structure from `packages/games/super-snake`
-- Import and wire up existing demo classes from engine
-- Keep it minimal - focus on showcasing features, not building a complex app
-- Add to workspace in root `package.json`
-
-### Why This Matters
-
-- Lower barrier to entry for new developers
-- Quick way to test engine features
-- Living documentation of how to use the engine
-- Starting template for new projects
-
-### Related Files
-
-- `packages/engine/src/demo/SpriteAnimationDemo.ts` - Already exists, can be reused
-- `packages/engine/src/devtools/AnimationDebugPanel.ts` - Should be showcased
-- `packages/games/super-snake/` - Reference for package structure
+- `npm run typecheck`: passing
+- `npm run test -- --run`: passing
+- `packages/playground`: implemented
+- `packages/games/super-snake`: implemented with tests
+- `packages/games/tetris-advanced`: placeholder
+- `packages/games/flappy-like`: placeholder
