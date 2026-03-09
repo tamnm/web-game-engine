@@ -47,3 +47,39 @@ export function advancePosition(
   }
   return { position: next, collided: true };
 }
+
+export function interpolateAxis(
+  from: number,
+  to: number,
+  size: number,
+  mode: GridMode,
+  progress: number
+): number {
+  if (mode !== 'wrap') {
+    return from + (to - from) * progress;
+  }
+
+  let delta = to - from;
+  const half = size / 2;
+  if (delta > half) {
+    delta -= size;
+  } else if (delta < -half) {
+    delta += size;
+  }
+
+  const value = from + delta * progress;
+  return ((value % size) + size) % size;
+}
+
+export function interpolatePosition(
+  from: GridPosition,
+  to: GridPosition,
+  grid: GridComponent,
+  mode: GridMode,
+  progress: number
+): GridPosition {
+  return {
+    x: interpolateAxis(from.x, to.x, grid.width, mode, progress),
+    y: interpolateAxis(from.y, to.y, grid.height, mode, progress),
+  };
+}

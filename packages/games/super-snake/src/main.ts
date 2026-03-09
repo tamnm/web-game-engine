@@ -26,6 +26,10 @@ export interface SuperSnakeSceneConfig extends SuperSnakeOptions {
     maxEntries?: number;
     storage?: Storage;
   };
+  settings?: {
+    storageKey?: string;
+    storage?: Storage;
+  };
   autoStartMode?: SnakeGameMode;
 }
 

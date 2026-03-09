@@ -74,7 +74,7 @@ describe('Super Snake integration', () => {
     callback(now);
   }
 
-  it('boots, advances frames, spawns weighted food, and tracks combos deterministically', async () => {
+  it('boots, advances frames, and delays respawns until the pickup cooldown expires', async () => {
     const container = document.createElement('div');
     document.body.appendChild(container);
 
@@ -103,6 +103,7 @@ describe('Super Snake integration', () => {
         direction: 'right',
         spawn: { x: 5, y: 1 },
         foodMaxActive: 1,
+        foodSpawnIntervalMs: 100,
         random,
         autoStartMode: 'classic',
         levelId: 'test-lab',
@@ -143,7 +144,7 @@ describe('Super Snake integration', () => {
     runFrame(100); // advance one move
     state = scene.getDebugState();
     expect(state?.snake.segments[0]).toMatchObject({ x: 0, y: 1 });
-    expect(state?.food.items[0]).toMatchObject({ x: 1, y: 1, type: 'starfruit' });
+    expect(state?.food.items).toHaveLength(0);
     expect(state?.state.score).toBe(10);
     expect(state?.state.comboCount).toBe(1);
     expect(context.fillRect).toHaveBeenCalled();
@@ -155,9 +156,9 @@ describe('Super Snake integration', () => {
     runFrame(100);
     state = scene.getDebugState();
     expect(state?.snake.segments[0]).toMatchObject({ x: 1, y: 1 });
-    expect(state?.state.score).toBe(310);
-    expect(state?.state.comboCount).toBe(4);
-    expect(state?.state.maxCombo).toBe(4);
+    expect(state?.state.score).toBe(10);
+    expect(state?.state.comboCount).toBe(1);
+    expect(state?.state.maxCombo).toBe(1);
 
     await runtime.stop();
     const cancel = globalThis.cancelAnimationFrame as ReturnType<typeof vi.fn>;

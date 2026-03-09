@@ -6,9 +6,9 @@ A TypeScript-first 2D web game engine paired with three showcase titles (Super S
 
 - `packages/engine` (`@web-game-engine/core`) — ECS-driven engine core with rendering, audio, input, animation, physics, asset pipeline, demo scene, and tests.
 - `packages/playground` (`@web-game-engine/playground`) — Interactive showcase of engine features with demos for animations, physics, particles, and input handling.
-- `packages/games/super-snake` — placeholder for the Super Snake showcase implementation.
-- `packages/games/tetris-advanced` — placeholder for the Advanced Tetris showcase.
-- `packages/games/flappy-like` — placeholder for the Flappy-style showcase.
+- `packages/games/super-snake` — implemented showcase with gameplay systems, UI, persistence, replay data capture, and tests.
+- `packages/games/tetris-advanced` — current bootstrap placeholder for the Advanced Tetris showcase.
+- `packages/games/flappy-like` — current bootstrap placeholder for the Flappy-style showcase.
 
 Supporting directories:
 
@@ -71,15 +71,22 @@ Completed
 - M2 — Rendering & Performance (sprite batching, cameras, viewport scaling, tint/blend hooks, Canvas fallback, dev overlay, perf harness)
 - M3 — Polishing & Plugins (UI overlay, save/load, particles, plugin host, example plugin; docs drafted)
 
+In Progress
+
+- M4 — Showcase: Super Snake
+  - Implemented and covered by tests, but not yet explicitly signed off against the full SNA-\* acceptance checklist.
+- M7 — Docs & Release
+  - Completed: docs site scaffold, tutorials/examples, API reference generation, engine playground, Pages deployment workflow.
+  - Remaining: final acceptance runs, changelog/versioning decisions, publish workflow if external release is intended.
+
 Next
 
-1. M7 — Docs & Release (in progress)
-   - Completed: Docs site scaffold, tutorials/examples, API reference generation.
-   - Remaining: final acceptance runs, changelog, versioning, publish workflow.
-2. Showcase Builds (M4–M6)
-   - Implement Super Snake, Advanced Tetris, Flappy-like; leaderboards and deterministic replays.
+1. M5 — Showcase: Advanced Tetris
+   - Replace the bootstrap placeholder with a playable build and focused tests for SRS, scoring, and deterministic rules.
+2. M6 — Showcase: Flappy-like
+   - Implement the core loop, deterministic daily seeds, quick restart, and replay/leaderboard support.
 3. Tooling Cleanup
    - Update Husky pre-commit bootstrap lines before v10.
-   - Expand workspace scripts for showcase dev servers.
+   - Expand workspace scripts for showcase dev servers once the remaining showcases exist.
 
 Refer to `requirements/roadmap-and-milestones.md` for full milestone scope and acceptance checkpoints.
