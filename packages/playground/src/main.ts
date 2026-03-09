@@ -4,7 +4,13 @@
  */
 
 import { PlaygroundApp } from './PlaygroundApp.js';
-import { AnimationDemo, PhysicsDemo, ParticlesDemo, InputDemo } from './demos/index.js';
+import {
+  AnimationDemo,
+  PhysicsDemo,
+  ParticlesDemo,
+  InputDemo,
+  TextRenderingDemo,
+} from './demos/index.js';
 
 /**
  * Initialize and start the playground application.
@@ -58,6 +64,13 @@ function main(): void {
     'Input Handling',
     'Keyboard, mouse, and gamepad input with real-time visual feedback',
     InputDemo
+  );
+
+  app.registerDemo(
+    'text-rendering',
+    'Text Rendering',
+    'Bitmap font rendering with layout, styling effects, and interactive controls',
+    TextRenderingDemo
   );
 
   // Render the demo selector UI

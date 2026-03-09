@@ -8,3 +8,4 @@ export { AnimationDemo } from './AnimationDemo.js';
 export { PhysicsDemo } from './PhysicsDemo.js';
 export { ParticlesDemo } from './ParticlesDemo.js';
 export { InputDemo } from './InputDemo.js';
+export { TextRenderingDemo } from './TextRenderingDemo.js';

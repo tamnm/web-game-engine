@@ -16,3 +16,4 @@ export * from './storage';
 export * from './particles';
 export * from './plugins';
 export * from './testing';
+export * from './text';
